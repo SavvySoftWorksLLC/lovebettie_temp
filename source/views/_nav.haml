@@ -1,0 +1,49 @@
+%div
+  %div.navbar-fixed
+    %nav#nav
+      %div.nav-wrapper.valign-wrapper
+        %a.brand-logo.center{href: "/index.html"}
+          %img{src: '/images/lovebettie_logo.png', alt: 'Lovebettie', height: '64px', class: 'valign'}
+
+        %a.button-collapse{"data-activates" => "mobile-nav", :href => "#"}
+          %i.material-icons menu
+
+        %ul.right.hide-on-med-and-down
+          %li
+            %a.waves-effect.waves-highlight{href: "/index.html"} Home
+          %li
+            %a.waves-effect.waves-highlight{href: "/index.html"} Calendar
+          %li  
+            %a.waves-effect.waves-highlight{href: "#modal1"} Contact
+          
+        %ul#mobile-nav.side-nav
+          %li
+            %a.waves-effect.waves-highlight{href: "/index.html"} Home
+          %li  
+            %a.waves-effect.waves-highlight{href: "/index.html"} Calendar
+          %li  
+            %a.waves-effect.waves-highlight{href: "#modal1"} Contact
+
+%div#contact
+  <!-- Modal Structure -->
+  %div#modal1.modal
+    %div.contact
+      %div.modal-content
+        %h5
+          %img{src: '/images/lovebettie_logo.png', alt: 'Lovebettie', height: '64px', style: 'padding-top: 4px;'}
+        %h5 Contact US
+      %div.row
+        %form.serializableForm.col.s12{:action => "https://remailer.savvysoftworks.com", :method => "post"}
+          %input{:name => "public_token", :type => "hidden", :value => ""}/
+          %input{:name => "after_success", :type => "hidden", :value => "http://lovebettie.com/index.html"}/
+          %input{:name => "after_failure", :type => "hidden", :value => "http://lovebettie.com/index.html"}/
+          .input-field
+            %input#name.validate{:name => "name", :placeholder => "Name", :type => "text"}/
+          .input-field
+            %input#email.validate{:name => "email", :placeholder => "Email", :type => "email"}/
+          .input-field
+            %textarea#textarea1.materialize-textarea{:length => "240", :name => "textarea", :placeholder => "Book us, ask a question, or just say hello..."}
+          .modal-footer
+            %button#submit.btn.waves-effect.waves-light.submit{:type => "submit"}
+              Submit
+              %i.material-icons.right send

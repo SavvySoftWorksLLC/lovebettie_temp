@@ -1,8 +1,3 @@
-# [http://www.garyanewsome.com/](http://www.garyanewsome.com)
+# Lovebettie
 
-or
-
-[https://garyanewsome.github.io/garyanewsome/](https://garyanewsome.github.io/garyanewsome)
-
-
-
+### Lovebettie's Temporary Landing PAge
