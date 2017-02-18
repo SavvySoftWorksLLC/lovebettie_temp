@@ -1,0 +1,98 @@
+<!doctype html>
+<html>
+  <head>
+    <meta content="IE=edge" http-equiv="X-UA-Compatible">
+    <meta charset="utf-8">
+    <meta content="width=device-width,initial-scale=1.0,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no" name="viewport">
+
+    <!-- Use title if it's in the page YAML frontmatter -->
+    <title>Lovebettie</title>
+
+    <link href='//fonts.googleapis.com/css?family=Lato:300,400' rel='stylesheet' type='text/css'>
+
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+    <link href="stylesheets/styles.css" rel="stylesheet" />
+    <link href="stylesheets/site.css" rel="stylesheet" />
+  </head>
+
+  <body>
+    <div>
+  <div class='navbar-fixed'>
+    <nav id='nav'>
+      <div class='nav-wrapper valign-wrapper'>
+        <a class='brand-logo center' href='/index.html'>
+          <img alt='Lovebettie' class='valign' height='64px' src='images/lovebettie_logo.png'>
+        </a>
+        <a class='button-collapse' data-activates='mobile-nav' href='#'>
+          <i class='material-icons'>menu</i>
+        </a>
+        <ul class='right hide-on-med-and-down'>
+          <li>
+            <a class='waves-effect waves-highlight' href='/index.html'>Home</a>
+          </li>
+          <li>
+            <a class='waves-effect waves-highlight' href='/index.html'>Calendar</a>
+          </li>
+          <li>
+            <a class='waves-effect waves-highlight' href='#modal1'>Contact</a>
+          </li>
+        </ul>
+        <ul class='side-nav' id='mobile-nav'>
+          <li>
+            <a class='waves-effect waves-highlight' href='/index.html'>Home</a>
+          </li>
+          <li>
+            <a class='waves-effect waves-highlight' href='/index.html'>Calendar</a>
+          </li>
+          <li>
+            <a class='waves-effect waves-highlight' href='#modal1'>Contact</a>
+          </li>
+        </ul>
+      </div>
+    </nav>
+  </div>
+</div>
+<div id='contact'>
+  <!-- Modal Structure -->
+  <div class='modal' id='modal1'>
+    <div class='contact'>
+      <div class='modal-content'>
+        <h5>
+          <img alt='Lovebettie' height='64px' src='images/lovebettie_logo.png' style='padding-top: 4px;'>
+        </h5>
+        <h5>Contact US</h5>
+      </div>
+      <div class='row'>
+        <form action='https://remailer.savvysoftworks.com' class='serializableForm col s12' method='post'>
+          <input name='public_token' type='hidden' value=''>
+          <input name='after_success' type='hidden' value='http://lovebettie.com/index.html'>
+          <input name='after_failure' type='hidden' value='http://lovebettie.com/index.html'>
+          <div class='input-field'>
+            <input class='validate' id='name' name='name' placeholder='Name' type='text'>
+          </div>
+          <div class='input-field'>
+            <input class='validate' id='email' name='email' placeholder='Email' type='email'>
+          </div>
+          <div class='input-field'>
+            <textarea class='materialize-textarea' id='textarea1' length='240' name='textarea' placeholder='Book us, ask a question, or just say hello...'></textarea>
+          </div>
+          <div class='modal-footer'>
+            <button class='btn waves-effect waves-light submit' id='submit' type='submit'>
+              Submit
+              <i class='material-icons right'>send</i>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+    <div class='header-image'>
+  <img src='images/lb.jpg'>
+</div>
+
+
+    <script src="javascripts/all.js"></script>
+  </body>
+</html>

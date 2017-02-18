@@ -1,0 +1,38 @@
+.container {
+  margin: 0 auto;
+  width: 80%; }
+
+body {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  background-color: #000000;
+  color: #FFFFFF; }
+
+.header-image img {
+  width: 100%; }
+
+#nav {
+  background-color: #AA0000; }
+
+#sidenav-overlay {
+  background-color: rgba(255, 255, 255, 0.25);
+  z-index: 1; }
+
+.contact {
+  margin: 0 auto;
+  background-color: #AA0000;
+  color: #FFFFFF;
+  text-align: center; }
+
+.modal .modal-footer {
+  background-color: #AA0000;
+  color: #FFFFFF; }
+
+#submit {
+  background-color: #000000;
+  border: 1px solid #FFFFFF;
+  padding-left: 1em;
+  padding-right: 1em; }
+
+#submit:hover {
+  background-color: #FFFFFF;
+  color: #000000; }
