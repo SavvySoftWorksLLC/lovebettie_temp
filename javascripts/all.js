@@ -9407,15 +9407,14 @@ jQuery.extend( jQuery.easing,
  *
  */
 ;
-    // Custom Easing
-    jQuery.extend( jQuery.easing,
-    {
-      easeInOutMaterial: function (x, t, b, c, d) {
-        if ((t/=d/2) < 1) return c/2*t*t + b;
-        return c/4*((t-=2)*t*t + 2) + b;
-      }
-    });
-
+// Custom Easing
+jQuery.extend( jQuery.easing,
+{
+  easeInOutMaterial: function (x, t, b, c, d) {
+    if ((t/=d/2) < 1) return c/2*t*t + b;
+    return c/4*((t-=2)*t*t + 2) + b;
+  }
+});
 /*! VelocityJS.org (1.2.3). (C) 2014 Julian Shapiro. MIT @license: en.wikipedia.org/wiki/MIT_License */
 /*! VelocityJS.org jQuery Shim (1.0.1). (C) 2014 The jQuery Foundation. MIT @license: en.wikipedia.org/wiki/MIT_License. */
 /*! Note that this has been modified by Materialize to confirm that Velocity is not already being imported. */
@@ -9466,6 +9465,49 @@ m.isFunction(t)&&t(null,!0)}),f.queue(a,m.isString(v)?v:"",[])),"stop"===y?(i(a)
 })(window);
 
 
+/*
+ * raf.js
+ * https://github.com/ngryman/raf.js
+ *
+ * original requestAnimationFrame polyfill by Erik Möller
+ * inspired from paul_irish gist and post
+ *
+ * Copyright (c) 2013 ngryman
+ * Licensed under the MIT license.
+ */
+(function(window) {
+  var lastTime = 0,
+    vendors = ['webkit', 'moz'],
+    requestAnimationFrame = window.requestAnimationFrame,
+    cancelAnimationFrame = window.cancelAnimationFrame,
+    i = vendors.length;
+
+  // try to un-prefix existing raf
+  while (--i >= 0 && !requestAnimationFrame) {
+    requestAnimationFrame = window[vendors[i] + 'RequestAnimationFrame'];
+    cancelAnimationFrame = window[vendors[i] + 'CancelRequestAnimationFrame'];
+  }
+
+  // polyfill with setTimeout fallback
+  // heavily inspired from @darius gist mod: https://gist.github.com/paulirish/1579671#comment-837945
+  if (!requestAnimationFrame || !cancelAnimationFrame) {
+    requestAnimationFrame = function(callback) {
+      var now = +Date.now(),
+        nextTime = Math.max(lastTime + 16, now);
+      return setTimeout(function() {
+        callback(lastTime = nextTime);
+      }, nextTime - now);
+    };
+
+    cancelAnimationFrame = clearTimeout;
+  }
+
+  // export to window
+  window.requestAnimationFrame = requestAnimationFrame;
+  window.cancelAnimationFrame = cancelAnimationFrame;
+}(window));
+
+
 // Unique ID
 Materialize.guid = (function() {
   function s4() {
@@ -9478,6 +9520,15 @@ Materialize.guid = (function() {
            s4() + '-' + s4() + s4() + s4();
   };
 })();
+
+/**
+ * Escapes hash from special characters
+ * @param {string} hash  String returned from this.hash
+ * @returns {string}
+ */
+Materialize.escapeHash = function(hash) {
+  return hash.replace( /(:|\.|\[|\]|,|=)/g, "\\$1" );
+};
 
 Materialize.elementOrParentIsFixed = function(element) {
     var $element = $(element);
@@ -9492,12 +9543,68 @@ Materialize.elementOrParentIsFixed = function(element) {
     return isFixed;
 };
 
+
+/**
+ * Get time in ms
+ * @license https://raw.github.com/jashkenas/underscore/master/LICENSE
+ * @type {function}
+ * @return {number}
+ */
+var getTime = (Date.now || function () {
+  return new Date().getTime();
+});
+
+
+/**
+ * Returns a function, that, when invoked, will only be triggered at most once
+ * during a given window of time. Normally, the throttled function will run
+ * as much as it can, without ever going more than once per `wait` duration;
+ * but if you'd like to disable the execution on the leading edge, pass
+ * `{leading: false}`. To disable execution on the trailing edge, ditto.
+ * @license https://raw.github.com/jashkenas/underscore/master/LICENSE
+ * @param {function} func
+ * @param {number} wait
+ * @param {Object=} options
+ * @returns {Function}
+ */
+Materialize.throttle = function(func, wait, options) {
+  var context, args, result;
+  var timeout = null;
+  var previous = 0;
+  options || (options = {});
+  var later = function () {
+    previous = options.leading === false ? 0 : getTime();
+    timeout = null;
+    result = func.apply(context, args);
+    context = args = null;
+  };
+  return function () {
+    var now = getTime();
+    if (!previous && options.leading === false) previous = now;
+    var remaining = wait - (now - previous);
+    context = this;
+    args = arguments;
+    if (remaining <= 0) {
+      clearTimeout(timeout);
+      timeout = null;
+      previous = now;
+      result = func.apply(context, args);
+      context = args = null;
+    } else if (!timeout && options.trailing !== false) {
+      timeout = setTimeout(later, remaining);
+    }
+    return result;
+  };
+};
+
+
 // Velocity has conflicts when loaded with jQuery, this will check for it
+// First, check if in noConflict mode
 var Vel;
-if ($) {
-  Vel = $.Velocity;
-} else if (jQuery) {
+if (jQuery) {
   Vel = jQuery.Velocity;
+} else if ($) {
+  Vel = $.Velocity;
 } else {
   Vel = Velocity;
 }
@@ -9505,7 +9612,9 @@ if ($) {
 (function ($) {
   $.fn.collapsible = function(options) {
     var defaults = {
-        accordion: undefined
+      accordion: undefined,
+      onOpen: undefined,
+      onClose: undefined
     };
 
     options = $.extend(defaults, options);
@@ -9520,22 +9629,22 @@ if ($) {
       var collapsible_type = $this.data("collapsible");
 
       // Turn off any existing event handlers
-       $this.off('click.collapse', '> li > .collapsible-header');
-       $panel_headers.off('click.collapse');
+      $this.off('click.collapse', '> li > .collapsible-header');
+      $panel_headers.off('click.collapse');
 
 
-       /****************
-       Helper Functions
-       ****************/
+      /****************
+      Helper Functions
+      ****************/
 
       // Accordion Open
       function accordionOpen(object) {
         $panel_headers = $this.find('> li > .collapsible-header');
         if (object.hasClass('active')) {
-            object.parent().addClass('active');
+          object.parent().addClass('active');
         }
         else {
-            object.parent().removeClass('active');
+          object.parent().removeClass('active');
         }
         if (object.parent().hasClass('active')){
           object.siblings('.collapsible-body').stop(true,false).slideDown({ duration: 350, easing: "easeOutQuart", queue: false, complete: function() {$(this).css('height', '');}});
@@ -9545,31 +9654,61 @@ if ($) {
         }
 
         $panel_headers.not(object).removeClass('active').parent().removeClass('active');
-        $panel_headers.not(object).parent().children('.collapsible-body').stop(true,false).slideUp(
-          {
-            duration: 350,
-            easing: "easeOutQuart",
-            queue: false,
-            complete:
-              function() {
-                $(this).css('height', '');
-              }
-          });
+
+        // Close previously open accordion elements.
+        $panel_headers.not(object).parent().children('.collapsible-body').stop(true,false).each(function() {
+          if ($(this).is(':visible')) {
+            $(this).slideUp({
+              duration: 350,
+              easing: "easeOutQuart",
+              queue: false,
+              complete:
+                function() {
+                  $(this).css('height', '');
+                  execCallbacks($(this).siblings('.collapsible-header'));
+                }
+            });
+          }
+        });
       }
 
       // Expandable Open
       function expandableOpen(object) {
         if (object.hasClass('active')) {
-            object.parent().addClass('active');
+          object.parent().addClass('active');
         }
         else {
-            object.parent().removeClass('active');
+          object.parent().removeClass('active');
         }
         if (object.parent().hasClass('active')){
           object.siblings('.collapsible-body').stop(true,false).slideDown({ duration: 350, easing: "easeOutQuart", queue: false, complete: function() {$(this).css('height', '');}});
         }
-        else{
+        else {
           object.siblings('.collapsible-body').stop(true,false).slideUp({ duration: 350, easing: "easeOutQuart", queue: false, complete: function() {$(this).css('height', '');}});
+        }
+      }
+
+      // Open collapsible. object: .collapsible-header
+      function collapsibleOpen(object) {
+        if (options.accordion || collapsible_type === "accordion" || collapsible_type === undefined) { // Handle Accordion
+          accordionOpen(object);
+        } else { // Handle Expandables
+          expandableOpen(object);
+        }
+
+        execCallbacks(object);
+      }
+
+      // Handle callbacks
+      function execCallbacks(object) {
+        if (object.hasClass('active')) {
+          if (typeof(options.onOpen) === "function") {
+            options.onOpen.call(this, object.parent());
+          }
+        } else {
+          if (typeof(options.onClose) === "function") {
+            options.onClose.call(this, object.parent());
+          }
         }
       }
 
@@ -9601,8 +9740,7 @@ if ($) {
 
       // Add click handler to only direct collapsible header children
       $this.on('click.collapse', '> li > .collapsible-header', function(e) {
-        var $header = $(this),
-            element = $(e.target);
+        var element = $(e.target);
 
         if (isChildrenOfPanelHeader(element)) {
           element = getPanelHeader(element);
@@ -9610,32 +9748,24 @@ if ($) {
 
         element.toggleClass('active');
 
-        if (options.accordion || collapsible_type === "accordion" || collapsible_type === undefined) { // Handle Accordion
-          accordionOpen(element);
-        } else { // Handle Expandables
-          expandableOpen(element);
-
-          if ($header.hasClass('active')) {
-            expandableOpen($header);
-          }
-        }
+        collapsibleOpen(element);
       });
 
+
       // Open first active
-      var $panel_headers = $this.find('> li > .collapsible-header');
       if (options.accordion || collapsible_type === "accordion" || collapsible_type === undefined) { // Handle Accordion
-        accordionOpen($panel_headers.filter('.active').first());
-      }
-      else { // Handle Expandables
+        collapsibleOpen($panel_headers.filter('.active').first());
+
+      } else { // Handle Expandables
         $panel_headers.filter('.active').each(function() {
-          expandableOpen($(this));
+          collapsibleOpen($(this));
         });
       }
 
     });
   };
 
-  $(document).ready(function(){
+  $(document).on('turbolinks:load', function(){
     $('.collapsible').collapsible();
   });
 }( jQuery ));
@@ -9652,7 +9782,7 @@ if ($) {
     var defaults = {
       inDuration: 300,
       outDuration: 225,
-      constrain_width: true, // Constrains width of dropdown to the activator
+      constrainWidth: true, // Constrains width of dropdown to the activator
       hover: false,
       gutter: 0, // Spacing from edge
       belowOrigin: false,
@@ -9678,7 +9808,7 @@ if ($) {
 
     this.each(function(){
       var origin = $(this);
-      var options = $.extend({}, defaults, options);
+      var curr_options = $.extend({}, defaults, options);
       var isFocused = false;
 
       // Dropdown menu
@@ -9686,21 +9816,21 @@ if ($) {
 
       function updateOptions() {
         if (origin.data('induration') !== undefined)
-          options.inDuration = origin.data('induration');
+          curr_options.inDuration = origin.data('induration');
         if (origin.data('outduration') !== undefined)
-          options.outDuration = origin.data('outduration');
+          curr_options.outDuration = origin.data('outduration');
         if (origin.data('constrainwidth') !== undefined)
-          options.constrain_width = origin.data('constrainwidth');
+          curr_options.constrainWidth = origin.data('constrainwidth');
         if (origin.data('hover') !== undefined)
-          options.hover = origin.data('hover');
+          curr_options.hover = origin.data('hover');
         if (origin.data('gutter') !== undefined)
-          options.gutter = origin.data('gutter');
+          curr_options.gutter = origin.data('gutter');
         if (origin.data('beloworigin') !== undefined)
-          options.belowOrigin = origin.data('beloworigin');
+          curr_options.belowOrigin = origin.data('beloworigin');
         if (origin.data('alignment') !== undefined)
-          options.alignment = origin.data('alignment');
+          curr_options.alignment = origin.data('alignment');
         if (origin.data('stoppropagation') !== undefined)
-          options.stopPropagation = origin.data('stoppropagation');
+          curr_options.stopPropagation = origin.data('stoppropagation');
       }
 
       updateOptions();
@@ -9726,7 +9856,7 @@ if ($) {
         origin.addClass('active');
 
         // Constrain width
-        if (options.constrain_width === true) {
+        if (curr_options.constrainWidth === true) {
           activates.css('width', origin.outerWidth());
 
         } else {
@@ -9738,13 +9868,13 @@ if ($) {
         var originHeight = origin.innerHeight();
         var offsetLeft = origin.offset().left;
         var offsetTop = origin.offset().top - $(window).scrollTop();
-        var currAlignment = options.alignment;
+        var currAlignment = curr_options.alignment;
         var gutterSpacing = 0;
         var leftPosition = 0;
 
         // Below Origin
         var verticalOffset = 0;
-        if (options.belowOrigin === true) {
+        if (curr_options.belowOrigin === true) {
           verticalOffset = originHeight;
         }
 
@@ -9787,12 +9917,12 @@ if ($) {
 
         // Handle edge alignment
         if (currAlignment === 'left') {
-          gutterSpacing = options.gutter;
+          gutterSpacing = curr_options.gutter;
           leftPosition = origin.position().left + gutterSpacing;
         }
         else if (currAlignment === 'right') {
           var offsetRight = origin.position().left + origin.outerWidth() - activates.outerWidth();
-          gutterSpacing = -options.gutter;
+          gutterSpacing = -curr_options.gutter;
           leftPosition =  offsetRight + gutterSpacing;
         }
 
@@ -9808,26 +9938,35 @@ if ($) {
         activates.stop(true, true).css('opacity', 0)
           .slideDown({
             queue: false,
-            duration: options.inDuration,
+            duration: curr_options.inDuration,
             easing: 'easeOutCubic',
             complete: function() {
               $(this).css('height', '');
             }
           })
-          .animate( {opacity: 1}, {queue: false, duration: options.inDuration, easing: 'easeOutSine'});
+          .animate( {opacity: 1}, {queue: false, duration: curr_options.inDuration, easing: 'easeOutSine'});
+
+        // Add click close handler to document
+        $(document).bind('click.'+ activates.attr('id') + ' touchstart.' + activates.attr('id'), function (e) {
+          if (!activates.is(e.target) && !origin.is(e.target) && (!origin.find(e.target).length) ) {
+            hideDropdown();
+            $(document).unbind('click.'+ activates.attr('id') + ' touchstart.' + activates.attr('id'));
+          }
+        });
       }
 
       function hideDropdown() {
         // Check for simultaneous focus and click events.
         isFocused = false;
-        activates.fadeOut(options.outDuration);
+        activates.fadeOut(curr_options.outDuration);
         activates.removeClass('active');
         origin.removeClass('active');
-        setTimeout(function() { activates.css('max-height', ''); }, options.outDuration);
+        $(document).unbind('click.'+ activates.attr('id') + ' touchstart.' + activates.attr('id'));
+        setTimeout(function() { activates.css('max-height', ''); }, curr_options.outDuration);
       }
 
       // Hover
-      if (options.hover) {
+      if (curr_options.hover) {
         var open = false;
         origin.unbind('click.' + origin.attr('id'));
         // Hover handler to show dropdown
@@ -9866,7 +10005,7 @@ if ($) {
                  !origin.hasClass('active') &&
                  ($(e.target).closest('.dropdown-content').length === 0)) {
               e.preventDefault(); // Prevents button click from moving window
-              if (options.stopPropagation) {
+              if (curr_options.stopPropagation) {
                 e.stopPropagation();
               }
               placeDropdown('click');
@@ -9875,15 +10014,6 @@ if ($) {
             else if (origin.hasClass('active')) {
               hideDropdown();
               $(document).unbind('click.'+ activates.attr('id') + ' touchstart.' + activates.attr('id'));
-            }
-            // If menu open, add click close handler to document
-            if (activates.hasClass('active')) {
-              $(document).bind('click.'+ activates.attr('id') + ' touchstart.' + activates.attr('id'), function (e) {
-                if (!activates.is(e.target) && !origin.is(e.target) && (!origin.find(e.target).length) ) {
-                  hideDropdown();
-                  $(document).unbind('click.'+ activates.attr('id') + ' touchstart.' + activates.attr('id'));
-                }
-              });
             }
           }
         });
@@ -9900,201 +10030,193 @@ if ($) {
     });
   }; // End dropdown plugin
 
-  $(document).ready(function(){
+  $(document).on('turbolinks:load', function(){
     $('.dropdown-button').dropdown();
   });
 }( jQuery ));
 (function($) {
-    var _stack = 0,
-    _lastID = 0,
-    _generateID = function() {
-      _lastID++;
-      return 'materialize-lean-overlay-' + _lastID;
-    };
+  var _stack = 0,
+  _lastID = 0,
+  _generateID = function() {
+    _lastID++;
+    return 'materialize-modal-overlay-' + _lastID;
+  };
 
-  $.fn.extend({
-    openModal: function(options) {
-
-      var $body = $('body');
-      var oldWidth = $body.innerWidth();
-      $body.css('overflow', 'hidden');
-      $body.width(oldWidth);
-
+  var methods = {
+    init : function(options) {
       var defaults = {
         opacity: 0.5,
-        in_duration: 350,
-        out_duration: 250,
+        inDuration: 350,
+        outDuration: 250,
         ready: undefined,
         complete: undefined,
         dismissible: true,
-        starting_top: '4%',
-        ending_top: '10%'
+        startingTop: '4%',
+        endingTop: '10%'
       };
-      var $modal = $(this);
-
-      if ($modal.hasClass('open')) {
-        return;
-      }
-
-      var overlayID = _generateID();
-      var $overlay = $('<div class="lean-overlay"></div>');
-      lStack = (++_stack);
-
-      // Store a reference of the overlay
-      $overlay.attr('id', overlayID).css('z-index', 1000 + lStack * 2);
-      $modal.data('overlay-id', overlayID).css('z-index', 1000 + lStack * 2 + 1);
-      $modal.addClass('open');
-
-      $("body").append($overlay);
 
       // Override defaults
       options = $.extend(defaults, options);
 
-      if (options.dismissible) {
-        $overlay.click(function() {
-          $modal.closeModal(options);
-        });
-        // Return on ESC
-        $(document).on('keyup.leanModal' + overlayID, function(e) {
-          if (e.keyCode === 27) {   // ESC key
-            $modal.closeModal(options);
-          }
-        });
-      }
+      return this.each(function() {
+        var $modal = $(this);
+        var modal_id = $(this).attr("id") || '#' + $(this).data('target');
 
-      $modal.find(".modal-close").on('click.close', function(e) {
-        $modal.closeModal(options);
-      });
+        var closeModal = function() {
+          var overlayID = $modal.data('overlay-id');
+          var $overlay = $('#' + overlayID);
+          $modal.removeClass('open');
 
-      $overlay.css({ display : "block", opacity : 0 });
+          // Enable scrolling
+          $('body').css({
+            overflow: '',
+            width: ''
+          });
 
-      $modal.css({
-        display : "block",
-        opacity: 0
-      });
+          $modal.find('.modal-close').off('click.close');
+          $(document).off('keyup.modal' + overlayID);
 
-      $overlay.velocity({opacity: options.opacity}, {duration: options.in_duration, queue: false, ease: "easeOutCubic"});
-      $modal.data('associated-overlay', $overlay[0]);
-
-      // Define Bottom Sheet animation
-      if ($modal.hasClass('bottom-sheet')) {
-        $modal.velocity({bottom: "0", opacity: 1}, {
-          duration: options.in_duration,
-          queue: false,
-          ease: "easeOutCubic",
-          // Handle modal ready callback
-          complete: function() {
-            if (typeof(options.ready) === "function") {
-              options.ready();
-            }
-          }
-        });
-      }
-      else {
-        $.Velocity.hook($modal, "scaleX", 0.7);
-        $modal.css({ top: options.starting_top });
-        $modal.velocity({top: options.ending_top, opacity: 1, scaleX: '1'}, {
-          duration: options.in_duration,
-          queue: false,
-          ease: "easeOutCubic",
-          // Handle modal ready callback
-          complete: function() {
-            if (typeof(options.ready) === "function") {
-              options.ready();
-            }
-          }
-        });
-      }
+          $overlay.velocity( { opacity: 0}, {duration: options.outDuration, queue: false, ease: "easeOutQuart"});
 
 
-    }
-  });
+          // Define Bottom Sheet animation
+          var exitVelocityOptions = {
+            duration: options.outDuration,
+            queue: false,
+            ease: "easeOutCubic",
+            // Handle modal ready callback
+            complete: function() {
+              $(this).css({display:"none"});
 
-  $.fn.extend({
-    closeModal: function(options) {
-      var defaults = {
-        out_duration: 250,
-        complete: undefined
-      };
-      var $modal = $(this);
-      var overlayID = $modal.data('overlay-id');
-      var $overlay = $('#' + overlayID);
-      $modal.removeClass('open');
-
-      options = $.extend(defaults, options);
-
-      // Enable scrolling
-      $('body').css({
-        overflow: '',
-        width: ''
-      });
-
-      $modal.find('.modal-close').off('click.close');
-      $(document).off('keyup.leanModal' + overlayID);
-
-      $overlay.velocity( { opacity: 0}, {duration: options.out_duration, queue: false, ease: "easeOutQuart"});
-
-
-      // Define Bottom Sheet animation
-      if ($modal.hasClass('bottom-sheet')) {
-        $modal.velocity({bottom: "-100%", opacity: 0}, {
-          duration: options.out_duration,
-          queue: false,
-          ease: "easeOutCubic",
-          // Handle modal ready callback
-          complete: function() {
-            $overlay.css({display:"none"});
-
-            // Call complete callback
-            if (typeof(options.complete) === "function") {
-              options.complete();
-            }
-            $overlay.remove();
-            _stack--;
-          }
-        });
-      }
-      else {
-        $modal.velocity(
-          { top: options.starting_top, opacity: 0, scaleX: 0.7}, {
-          duration: options.out_duration,
-          complete:
-            function() {
-
-              $(this).css('display', 'none');
               // Call complete callback
               if (typeof(options.complete) === "function") {
-                options.complete();
+                options.complete.call(this, $modal);
               }
               $overlay.remove();
               _stack--;
             }
+          };
+          if ($modal.hasClass('bottom-sheet')) {
+            $modal.velocity({bottom: "-100%", opacity: 0}, exitVelocityOptions);
           }
-        );
-      }
-    }
-  });
+          else {
+            $modal.velocity(
+              { top: options.startingTop, opacity: 0, scaleX: 0.7},
+              exitVelocityOptions
+            );
+          }
+        };
 
-  $.fn.extend({
-    leanModal: function(option) {
-      return this.each(function() {
+        var openModal = function($trigger) {
+          var $body = $('body');
+          var oldWidth = $body.innerWidth();
+          $body.css('overflow', 'hidden');
+          $body.width(oldWidth);
 
-        var defaults = {
-          starting_top: '4%'
-        },
-        // Override defaults
-        options = $.extend(defaults, option);
+          if ($modal.hasClass('open')) {
+            return;
+          }
+
+          var overlayID = _generateID();
+          var $overlay = $('<div class="modal-overlay"></div>');
+          lStack = (++_stack);
+
+          // Store a reference of the overlay
+          $overlay.attr('id', overlayID).css('z-index', 1000 + lStack * 2);
+          $modal.data('overlay-id', overlayID).css('z-index', 1000 + lStack * 2 + 1);
+          $modal.addClass('open');
+
+          $("body").append($overlay);
+
+          if (options.dismissible) {
+            $overlay.click(function() {
+              closeModal();
+            });
+            // Return on ESC
+            $(document).on('keyup.modal' + overlayID, function(e) {
+              if (e.keyCode === 27) {   // ESC key
+                closeModal();
+              }
+            });
+          }
+
+          $modal.find(".modal-close").on('click.close', function(e) {
+            closeModal();
+          });
+
+          $overlay.css({ display : "block", opacity : 0 });
+
+          $modal.css({
+            display : "block",
+            opacity: 0
+          });
+
+          $overlay.velocity({opacity: options.opacity}, {duration: options.inDuration, queue: false, ease: "easeOutCubic"});
+          $modal.data('associated-overlay', $overlay[0]);
+
+          // Define Bottom Sheet animation
+          var enterVelocityOptions = {
+            duration: options.inDuration,
+            queue: false,
+            ease: "easeOutCubic",
+            // Handle modal ready callback
+            complete: function() {
+              if (typeof(options.ready) === "function") {
+                options.ready.call(this, $modal, $trigger);
+              }
+            }
+          };
+          if ($modal.hasClass('bottom-sheet')) {
+            $modal.velocity({bottom: "0", opacity: 1}, enterVelocityOptions);
+          }
+          else {
+            $.Velocity.hook($modal, "scaleX", 0.7);
+            $modal.css({ top: options.startingTop });
+            $modal.velocity({top: options.endingTop, opacity: 1, scaleX: '1'}, enterVelocityOptions);
+          }
+
+        };
+
+        // Reset handlers
+        $(document).off('click.modalTrigger', 'a[href="#' + modal_id + '"], [data-target="' + modal_id + '"]');
+        $(this).off('openModal');
+        $(this).off('closeModal');
 
         // Close Handlers
-        $(this).click(function(e) {
-          options.starting_top = ($(this).offset().top - $(window).scrollTop()) /1.15;
-          var modal_id = $(this).attr("href") || '#' + $(this).data('target');
-          $(modal_id).openModal(options);
+        $(document).on('click.modalTrigger', 'a[href="#' + modal_id + '"], [data-target="' + modal_id + '"]', function(e) {
+          options.startingTop = ($(this).offset().top - $(window).scrollTop()) /1.15;
+          openModal($(this));
           e.preventDefault();
         }); // done set on click
+
+        $(this).on('openModal', function() {
+          var modal_id = $(this).attr("href") || '#' + $(this).data('target');
+          openModal();
+        });
+
+        $(this).on('closeModal', function() {
+          closeModal();
+        });
       }); // done return
+    },
+    open : function() {
+      $(this).trigger('openModal');
+    },
+    close : function() {
+      $(this).trigger('closeModal');
     }
-  });
+  };
+
+  $.fn.modal = function(methodOrOptions) {
+    if ( methods[methodOrOptions] ) {
+      return methods[ methodOrOptions ].apply( this, Array.prototype.slice.call( arguments, 1 ));
+    } else if ( typeof methodOrOptions === 'object' || ! methodOrOptions ) {
+      // Default to "init"
+      return methods.init.apply( this, arguments );
+    } else {
+      $.error( 'Method ' +  methodOrOptions + ' does not exist on jQuery.modal' );
+    }
+  };
 })(jQuery);
 (function ($) {
 
@@ -10118,6 +10240,7 @@ if ($) {
       var originalHeight = 0;
       var ancestorsChanged;
       var ancestor;
+      var originInlineStyles = origin.attr('style');
       origin.wrap(placeholder);
 
 
@@ -10173,7 +10296,11 @@ if ($) {
         }
 
         // Set css on origin
-        origin.css({position: 'absolute', 'z-index': 1000})
+        origin.css({
+          position: 'absolute',
+          'z-index': 1000,
+          'will-change': 'left, top, width, height'
+        })
         .data('width', originalWidth)
         .data('height', originalHeight);
 
@@ -10186,10 +10313,21 @@ if ($) {
             if (doneAnimating === true)
             returnToOriginal();
           });
-          // Animate Overlay
-          // Put before in origin image to preserve z-index layering.
-          origin.before(overlay);
-          overlay.velocity({opacity: 1},
+
+        // Put before in origin image to preserve z-index layering.
+        origin.before(overlay);
+
+        // Set dimensions if needed
+        var overlayOffset = overlay[0].getBoundingClientRect();
+        overlay.css({
+          width: windowWidth,
+          height: windowHeight,
+          left: -1 * overlayOffset.left,
+          top: -1 * overlayOffset.top
+        })
+
+        // Animate Overlay
+        overlay.velocity({opacity: 1},
                            {duration: inDuration, queue: false, easing: 'easeOutQuad'} );
 
         // Add and animate caption if it exists
@@ -10260,7 +10398,7 @@ if ($) {
             ); // End Velocity
         }
 
-    }); // End origin on click
+      }); // End origin on click
 
 
       // Return on scroll
@@ -10284,151 +10422,146 @@ if ($) {
       // This function returns the modaled image to the original spot
       function returnToOriginal() {
 
-          doneAnimating = false;
+        doneAnimating = false;
 
-          var placeholder = origin.parent('.material-placeholder');
-          var windowWidth = window.innerWidth;
-          var windowHeight = window.innerHeight;
-          var originalWidth = origin.data('width');
-          var originalHeight = origin.data('height');
+        var placeholder = origin.parent('.material-placeholder');
+        var windowWidth = window.innerWidth;
+        var windowHeight = window.innerHeight;
+        var originalWidth = origin.data('width');
+        var originalHeight = origin.data('height');
 
-          origin.velocity("stop", true);
-          $('#materialbox-overlay').velocity("stop", true);
-          $('.materialbox-caption').velocity("stop", true);
+        origin.velocity("stop", true);
+        $('#materialbox-overlay').velocity("stop", true);
+        $('.materialbox-caption').velocity("stop", true);
 
 
-          $('#materialbox-overlay').velocity({opacity: 0}, {
-            duration: outDuration, // Delay prevents animation overlapping
-            queue: false, easing: 'easeOutQuad',
-            complete: function(){
-              // Remove Overlay
-              overlayActive = false;
-              $(this).remove();
-            }
-          });
-
-          // Resize Image
-          origin.velocity(
-            {
-              width: originalWidth,
-              height: originalHeight,
-              left: 0,
-              top: 0
-            },
-            {
-              duration: outDuration,
-              queue: false, easing: 'easeOutQuad'
-            }
-          );
-
-          // Remove Caption + reset css settings on image
-          $('.materialbox-caption').velocity({opacity: 0}, {
-            duration: outDuration, // Delay prevents animation overlapping
-            queue: false, easing: 'easeOutQuad',
-            complete: function(){
-              placeholder.css({
-                height: '',
-                width: '',
-                position: '',
-                top: '',
-                left: ''
-              });
-
-              origin.css({
-                height: '',
-                top: '',
-                left: '',
-                width: '',
-                'max-width': '',
-                position: '',
-                'z-index': ''
-              });
-
-              // Remove class
-              origin.removeClass('active');
-              doneAnimating = true;
-              $(this).remove();
-
-              // Remove overflow overrides on ancestors
-              if (ancestorsChanged) {
-                ancestorsChanged.css('overflow', '');
-              }
-            }
-          });
-
-        }
+        $('#materialbox-overlay').velocity({opacity: 0}, {
+          duration: outDuration, // Delay prevents animation overlapping
+          queue: false, easing: 'easeOutQuad',
+          complete: function(){
+            // Remove Overlay
+            overlayActive = false;
+            $(this).remove();
+          }
         });
-};
 
-$(document).ready(function(){
-  $('.materialboxed').materialbox();
-});
+        // Resize Image
+        origin.velocity(
+          {
+            width: originalWidth,
+            height: originalHeight,
+            left: 0,
+            top: 0
+          },
+          {
+            duration: outDuration,
+            queue: false, easing: 'easeOutQuad'
+          }
+        );
+
+        // Remove Caption + reset css settings on image
+        $('.materialbox-caption').velocity({opacity: 0}, {
+          duration: outDuration, // Delay prevents animation overlapping
+          queue: false, easing: 'easeOutQuad',
+          complete: function(){
+            placeholder.css({
+              height: '',
+              width: '',
+              position: '',
+              top: '',
+              left: ''
+            });
+
+            origin.removeAttr('style');
+            origin.attr('style', originInlineStyles);
+
+            // Remove class
+            origin.removeClass('active');
+            doneAnimating = true;
+            $(this).remove();
+
+            // Remove overflow overrides on ancestors
+            if (ancestorsChanged) {
+              ancestorsChanged.css('overflow', '');
+            }
+          }
+        });
+
+      }
+    });
+  };
+
+  $(document).on('turbolinks:load', function(){
+    $('.materialboxed').materialbox();
+  });
 
 }( jQuery ));
 (function ($) {
 
-    $.fn.parallax = function () {
-      var window_width = $(window).width();
-      // Parallax Scripts
-      return this.each(function(i) {
-        var $this = $(this);
-        $this.addClass('parallax');
+  $.fn.parallax = function () {
+    var window_width = $(window).width();
+    // Parallax Scripts
+    return this.each(function(i) {
+      var $this = $(this);
+      $this.addClass('parallax');
 
-        function updateParallax(initial) {
-          var container_height;
-          if (window_width < 601) {
-            container_height = ($this.height() > 0) ? $this.height() : $this.children("img").height();
-          }
-          else {
-            container_height = ($this.height() > 0) ? $this.height() : 500;
-          }
-          var $img = $this.children("img").first();
-          var img_height = $img.height();
-          var parallax_dist = img_height - container_height;
-          var bottom = $this.offset().top + container_height;
-          var top = $this.offset().top;
-          var scrollTop = $(window).scrollTop();
-          var windowHeight = window.innerHeight;
-          var windowBottom = scrollTop + windowHeight;
-          var percentScrolled = (windowBottom - top) / (container_height + windowHeight);
-          var parallax = Math.round((parallax_dist * percentScrolled));
+      function updateParallax(initial) {
+        var container_height;
+        if (window_width < 601) {
+          container_height = ($this.height() > 0) ? $this.height() : $this.children("img").height();
+        }
+        else {
+          container_height = ($this.height() > 0) ? $this.height() : 500;
+        }
+        var $img = $this.children("img").first();
+        var img_height = $img.height();
+        var parallax_dist = img_height - container_height;
+        var bottom = $this.offset().top + container_height;
+        var top = $this.offset().top;
+        var scrollTop = $(window).scrollTop();
+        var windowHeight = window.innerHeight;
+        var windowBottom = scrollTop + windowHeight;
+        var percentScrolled = (windowBottom - top) / (container_height + windowHeight);
+        var parallax = Math.round((parallax_dist * percentScrolled));
 
-          if (initial) {
-            $img.css('display', 'block');
-          }
-          if ((bottom > scrollTop) && (top < (scrollTop + windowHeight))) {
-            $img.css('transform', "translate3D(-50%," + parallax + "px, 0)");
-          }
-
+        if (initial) {
+          $img.css('display', 'block');
+        }
+        if ((bottom > scrollTop) && (top < (scrollTop + windowHeight))) {
+          $img.css('transform', "translate3D(-50%," + parallax + "px, 0)");
         }
 
-        // Wait for image load
-        $this.children("img").one("load", function() {
-          updateParallax(true);
-        }).each(function() {
-          if(this.complete) $(this).load();
-        });
+      }
 
-        $(window).scroll(function() {
-          window_width = $(window).width();
-          updateParallax(false);
-        });
-
-        $(window).resize(function() {
-          window_width = $(window).width();
-          updateParallax(false);
-        });
-
+      // Wait for image load
+      $this.children("img").one("load", function() {
+        updateParallax(true);
+      }).each(function() {
+        if (this.complete) $(this).trigger("load");
       });
 
-    };
+      $(window).scroll(function() {
+        window_width = $(window).width();
+        updateParallax(false);
+      });
+
+      $(window).resize(function() {
+        window_width = $(window).width();
+        updateParallax(false);
+      });
+
+    });
+
+  };
 }( jQuery ));
 (function ($) {
 
   var methods = {
     init : function(options) {
       var defaults = {
-        onShow: null
+        onShow: null,
+        swipeable: false,
+        responsiveThreshold: Infinity, // breakpoint for swipeable
       };
       options = $.extend(defaults, options);
 
@@ -10439,11 +10572,50 @@ $(document).ready(function(){
       var $this = $(this),
           window_width = $(window).width();
 
-      $this.width('100%');
       var $active, $content, $links = $this.find('li.tab a'),
           $tabs_width = $this.width(),
+          $tabs_content = $(),
+          $tabs_wrapper,
           $tab_width = Math.max($tabs_width, $this[0].scrollWidth) / $links.length,
-          $index = 0;
+          $indicator,
+          index = prev_index = 0,
+          clicked = false,
+          clickedTimeout,
+          transition = 300;
+
+
+      // Finds right attribute for indicator based on active tab.
+      // el: jQuery Object
+      var calcRightPos = function(el) {
+        return $tabs_width - el.position().left - el.outerWidth() - $this.scrollLeft();
+      };
+
+      // Finds left attribute for indicator based on active tab.
+      // el: jQuery Object
+      var calcLeftPos = function(el) {
+        return el.position().left + $this.scrollLeft();
+      };
+
+      // Animates Indicator to active tab.
+      // prev_index: Number
+      var animateIndicator = function(prev_index) {
+        if ((index - prev_index) >= 0) {
+          $indicator.velocity({"right": calcRightPos($active) }, { duration: transition, queue: false, easing: 'easeOutQuad'});
+          $indicator.velocity({"left": calcLeftPos($active) }, {duration: transition, queue: false, easing: 'easeOutQuad', delay: 90});
+
+        } else {
+          $indicator.velocity({"left": calcLeftPos($active) }, { duration: transition, queue: false, easing: 'easeOutQuad'});
+          $indicator.velocity({"right": calcRightPos($active) }, {duration: transition, queue: false, easing: 'easeOutQuad', delay: 90});
+        }
+      };
+
+      // Change swipeable according to responsive threshold
+      if (options.swipeable) {
+        if (window_width > options.responsiveThreshold) {
+          options.swipeable = false;
+        }
+      }
+
 
       // If the location.hash matches one of the links, use that as the active tab.
       $active = $($links.filter('[href="'+location.hash+'"]'));
@@ -10457,38 +10629,73 @@ $(document).ready(function(){
       }
 
       $active.addClass('active');
-      $index = $links.index($active);
-      if ($index < 0) {
-        $index = 0;
+      index = $links.index($active);
+      if (index < 0) {
+        index = 0;
       }
 
       if ($active[0] !== undefined) {
         $content = $($active[0].hash);
+        $content.addClass('active');
       }
 
       // append indicator then set indicator width to tab width
-      $this.append('<div class="indicator"></div>');
-      var $indicator = $this.find('.indicator');
+      if (!$this.find('.indicator').length) {
+        $this.append('<div class="indicator"></div>');
+      }
+      $indicator = $this.find('.indicator');
+
+      // we make sure that the indicator is at the end of the tabs
+      $this.append($indicator);
+
       if ($this.is(":visible")) {
-        $indicator.css({"right": $tabs_width - (($index + 1) * $tab_width)});
-        $indicator.css({"left": $index * $tab_width});
+        // $indicator.css({"right": $tabs_width - ((index + 1) * $tab_width)});
+        // $indicator.css({"left": index * $tab_width});
+        setTimeout(function() {
+          $indicator.css({"right": calcRightPos($active) });
+          $indicator.css({"left": calcLeftPos($active) });
+        }, 0);
       }
       $(window).resize(function () {
         $tabs_width = $this.width();
         $tab_width = Math.max($tabs_width, $this[0].scrollWidth) / $links.length;
-        if ($index < 0) {
-          $index = 0;
+        if (index < 0) {
+          index = 0;
         }
         if ($tab_width !== 0 && $tabs_width !== 0) {
-          $indicator.css({"right": $tabs_width - (($index + 1) * $tab_width)});
-          $indicator.css({"left": $index * $tab_width});
+          $indicator.css({"right": calcRightPos($active) });
+          $indicator.css({"left": calcLeftPos($active) });
         }
       });
 
-      // Hide the remaining content
-      $links.not($active).each(function () {
-        $(this.hash).hide();
-      });
+      // Initialize Tabs Content.
+      if (options.swipeable) {
+        // TODO: Duplicate calls with swipeable? handle multiple div wrapping.
+        $links.each(function () {
+          var $curr_content = $(Materialize.escapeHash(this.hash));
+          $curr_content.addClass('carousel-item');
+          $tabs_content = $tabs_content.add($curr_content);
+        });
+        $tabs_wrapper = $tabs_content.wrapAll('<div class="tabs-content carousel"></div>');
+        $tabs_content.css('display', '');
+        $('.tabs-content.carousel').carousel({
+          fullWidth: true,
+          noWrap: true,
+          onCycleTo: function(item) {
+            if (!clicked) {
+              var prev_index = index;
+              index = $tabs_wrapper.index(item);
+              $active = $links.eq(index);
+              animateIndicator(prev_index);
+            }
+          },
+        });
+      } else {
+        // Hide the remaining content
+        $links.not($active).each(function () {
+          $(Materialize.escapeHash(this.hash)).hide();
+        });
+      }
 
 
       // Bind the click event handler
@@ -10503,47 +10710,56 @@ $(document).ready(function(){
           return;
         }
 
+        clicked = true;
         $tabs_width = $this.width();
         $tab_width = Math.max($tabs_width, $this[0].scrollWidth) / $links.length;
 
         // Make the old tab inactive.
         $active.removeClass('active');
-        if ($content !== undefined) {
-          $content.hide();
-        }
+        var $oldContent = $content
 
         // Update the variables with the new link and content
         $active = $(this);
-        $content = $(this.hash);
+        $content = $(Materialize.escapeHash(this.hash));
         $links = $this.find('li.tab a');
+        var activeRect = $active.position();
 
         // Make the tab active.
         $active.addClass('active');
-        var $prev_index = $index;
-        $index = $links.index($(this));
-        if ($index < 0) {
-          $index = 0;
+        prev_index = index;
+        index = $links.index($(this));
+        if (index < 0) {
+          index = 0;
         }
         // Change url to current tab
         // window.location.hash = $active.attr('href');
 
-        if ($content !== undefined) {
-          $content.show();
-          if (typeof(options.onShow) === "function") {
-            options.onShow.call(this, $content);
+        // Swap content
+        if (options.swipeable) {
+          if ($tabs_content.length) {
+            $tabs_content.carousel('set', index);
+          }
+        } else {
+          if ($content !== undefined) {
+            $content.show();
+            $content.addClass('active');
+            if (typeof(options.onShow) === "function") {
+              options.onShow.call(this, $content);
+            }
+          }
+
+          if ($oldContent !== undefined &&
+              !$oldContent.is($content)) {
+            $oldContent.hide();
+            $oldContent.removeClass('active');
           }
         }
 
-        // Update indicator
-        if (($index - $prev_index) >= 0) {
-          $indicator.velocity({"right": $tabs_width - (($index + 1) * $tab_width)}, { duration: 300, queue: false, easing: 'easeOutQuad'});
-          $indicator.velocity({"left": $index * $tab_width}, {duration: 300, queue: false, easing: 'easeOutQuad', delay: 90});
+        // Reset clicked state
+        clickedTimeout = setTimeout(function(){ clicked = false; }, transition);
 
-        }
-        else {
-          $indicator.velocity({"left": $index * $tab_width}, { duration: 300, queue: false, easing: 'easeOutQuad'});
-          $indicator.velocity({"right": $tabs_width - (($index + 1) * $tab_width)}, {duration: 300, queue: false, easing: 'easeOutQuad', delay: 90});
-        }
+        // Update indicator
+        animateIndicator(prev_index);
 
         // Prevent the anchor's default click action
         e.preventDefault();
@@ -10563,11 +10779,11 @@ $(document).ready(function(){
       // Default to "init"
       return methods.init.apply( this, arguments );
     } else {
-      $.error( 'Method ' +  methodOrOptions + ' does not exist on jQuery.tooltip' );
+      $.error( 'Method ' +  methodOrOptions + ' does not exist on jQuery.tabs' );
     }
   };
 
-  $(document).ready(function(){
+  $(document).on('turbolinks:load', function(){
     $('ul.tabs').tabs();
   });
 }( jQuery ));
@@ -10598,6 +10814,12 @@ $(document).ready(function(){
       return this.each(function() {
         var tooltipId = Materialize.guid();
         var origin = $(this);
+
+        // Destroy old tooltip
+        if (origin.attr('data-tooltip-id')) {
+          $('#' + origin.attr('data-tooltip-id')).remove();
+        }
+
         origin.attr('data-tooltip-id', tooltipId);
 
         // Get attributes.
@@ -10653,18 +10875,20 @@ $(document).ready(function(){
             started = true;
             tooltipEl.velocity('stop');
             backdrop.velocity('stop');
-            tooltipEl.css({ display: 'block', left: '0px', top: '0px' });
+            tooltipEl.css({ visibility: 'visible', left: '0px', top: '0px' });
 
             // Tooltip positioning
             var originWidth = origin.outerWidth();
             var originHeight = origin.outerHeight();
-
             var tooltipHeight = tooltipEl.outerHeight();
             var tooltipWidth = tooltipEl.outerWidth();
             var tooltipVerticalMovement = '0px';
             var tooltipHorizontalMovement = '0px';
+            var backdropOffsetWidth = backdrop[0].offsetWidth;
+            var backdropOffsetHeight = backdrop[0].offsetHeight;
             var scaleXFactor = 8;
             var scaleYFactor = 8;
+            var scaleFactor = 0;
             var targetTop, targetLeft, newCoordinates;
 
             if (tooltipPosition === "top") {
@@ -10672,7 +10896,6 @@ $(document).ready(function(){
               targetTop = origin.offset().top - tooltipHeight - margin;
               targetLeft = origin.offset().left + originWidth/2 - tooltipWidth/2;
               newCoordinates = repositionWithinScreen(targetLeft, targetTop, tooltipWidth, tooltipHeight);
-
               tooltipVerticalMovement = '-10px';
               backdrop.css({
                 bottom: 0,
@@ -10680,7 +10903,7 @@ $(document).ready(function(){
                 borderRadius: '14px 14px 0 0',
                 transformOrigin: '50% 100%',
                 marginTop: tooltipHeight,
-                marginLeft: (tooltipWidth/2) - (backdrop.width()/2)
+                marginLeft: (tooltipWidth/2) - (backdropOffsetWidth/2)
               });
             }
             // Left Position
@@ -10728,7 +10951,7 @@ $(document).ready(function(){
               backdrop.css({
                 top: 0,
                 left: 0,
-                marginLeft: (tooltipWidth/2) - (backdrop.width()/2)
+                marginLeft: (tooltipWidth/2) - (backdropOffsetWidth/2)
               });
             }
 
@@ -10739,14 +10962,15 @@ $(document).ready(function(){
             });
 
             // Calculate Scale to fill
-            scaleXFactor = Math.SQRT2 * tooltipWidth / parseInt(backdrop.css('width'));
-            scaleYFactor = Math.SQRT2 * tooltipHeight / parseInt(backdrop.css('height'));
+            scaleXFactor = Math.SQRT2 * tooltipWidth / parseInt(backdropOffsetWidth);
+            scaleYFactor = Math.SQRT2 * tooltipHeight / parseInt(backdropOffsetHeight);
+            scaleFactor = Math.max(scaleXFactor, scaleYFactor);
 
-            tooltipEl.velocity({ marginTop: tooltipVerticalMovement, marginLeft: tooltipHorizontalMovement}, { duration: 350, queue: false })
+            tooltipEl.velocity({ translateY: tooltipVerticalMovement, translateX: tooltipHorizontalMovement}, { duration: 350, queue: false })
               .velocity({opacity: 1}, {duration: 300, delay: 50, queue: false});
-            backdrop.css({ display: 'block' })
+            backdrop.css({ visibility: 'visible' })
               .velocity({opacity:1},{duration: 55, delay: 0, queue: false})
-              .velocity({scaleX: scaleXFactor, scaleY: scaleYFactor}, {duration: 300, delay: 0, queue: false, easing: 'easeInOutQuad'});
+              .velocity({scaleX: scaleFactor, scaleY: scaleFactor}, {duration: 300, delay: 0, queue: false, easing: 'easeInOutQuad'});
           };
 
           timeoutRef = setTimeout(showTooltip, tooltipDelay); // End Interval
@@ -10762,13 +10986,13 @@ $(document).ready(function(){
           setTimeout(function() {
             if (started !== true) {
               tooltipEl.velocity({
-                opacity: 0, marginTop: 0, marginLeft: 0}, { duration: 225, queue: false});
+                opacity: 0, translateY: 0, translateX: 0}, { duration: 225, queue: false});
               backdrop.velocity({opacity: 0, scaleX: 1, scaleY: 1}, {
                 duration:225,
                 queue: false,
                 complete: function(){
-                  backdrop.css('display', 'none');
-                  tooltipEl.css('display', 'none');
+                  backdrop.css({ visibility: 'hidden' });
+                  tooltipEl.css({ visibility: 'hidden' });
                   started = false;}
               });
             }
@@ -10797,7 +11021,7 @@ $(document).ready(function(){
     return {x: newX, y: newY};
   };
 
-  $(document).ready(function(){
+  $(document).on('turbolinks:load', function(){
      $('.tooltipped').tooltip();
    });
 }( jQuery ));
@@ -11141,39 +11365,38 @@ $(document).ready(function(){
 
 })(window);
 Materialize.toast = function (message, displayLength, className, completeCallback) {
-    className = className || "";
+  className = className || "";
 
-    var container = document.getElementById('toast-container');
+  var container = document.getElementById('toast-container');
 
-    // Create toast container if it does not exist
-    if (container === null) {
-        // create notification container
-        container = document.createElement('div');
-        container.id = 'toast-container';
-        document.body.appendChild(container);
-    }
+  // Create toast container if it does not exist
+  if (container === null) {
+    // create notification container
+    container = document.createElement('div');
+    container.id = 'toast-container';
+    document.body.appendChild(container);
+  }
 
-    // Select and append toast
-    var newToast = createToast(message);
+  // Select and append toast
+  var newToast = createToast(message);
 
-    // only append toast if message is not undefined
-    if(message){
-        container.appendChild(newToast);
-    }
+  // only append toast if message is not undefined
+  if(message){
+    container.appendChild(newToast);
+  }
 
-    newToast.style.top = '35px';
-    newToast.style.opacity = 0;
+  newToast.style.opacity = 0;
 
-    // Animate toast in
-    Vel(newToast, { "top" : "0px", opacity: 1 }, {duration: 300,
-      easing: 'easeOutCubic',
-      queue: false});
+  // Animate toast in
+  Vel(newToast, {translateY: '-35px',  opacity: 1 }, {duration: 300,
+    easing: 'easeOutCubic',
+    queue: false});
 
-    // Allows timer to be pause while being panned
-    var timeLeft = displayLength;
-    var counterInterval = setInterval (function(){
-
-
+  // Allows timer to be pause while being panned
+  var timeLeft = displayLength;
+  var counterInterval;
+  if (timeLeft != null)  {
+    counterInterval = setInterval (function(){
       if (newToast.parentNode === null)
         window.clearInterval(counterInterval);
 
@@ -11198,83 +11421,84 @@ Materialize.toast = function (message, displayLength, className, completeCallbac
         window.clearInterval(counterInterval);
       }
     }, 20);
+  }
 
 
 
-    function createToast(html) {
+  function createToast(html) {
 
-        // Create toast
-        var toast = document.createElement('div');
-        toast.classList.add('toast');
-        if (className) {
-            var classes = className.split(' ');
+    // Create toast
+    var toast = document.createElement('div');
+    toast.classList.add('toast');
+    if (className) {
+      var classes = className.split(' ');
 
-            for (var i = 0, count = classes.length; i < count; i++) {
-                toast.classList.add(classes[i]);
-            }
-        }
-        // If type of parameter is HTML Element
-        if ( typeof HTMLElement === "object" ? html instanceof HTMLElement : html && typeof html === "object" && html !== null && html.nodeType === 1 && typeof html.nodeName==="string"
-) {
-          toast.appendChild(html);
-        }
-        else if (html instanceof jQuery) {
-          // Check if it is jQuery object
-          toast.appendChild(html[0]);
-        }
-        else {
-          // Insert as text;
-          toast.innerHTML = html; 
-        }
-        // Bind hammer
-        var hammerHandler = new Hammer(toast, {prevent_default: false});
-        hammerHandler.on('pan', function(e) {
-          var deltaX = e.deltaX;
-          var activationDistance = 80;
-
-          // Change toast state
-          if (!toast.classList.contains('panning')){
-            toast.classList.add('panning');
-          }
-
-          var opacityPercent = 1-Math.abs(deltaX / activationDistance);
-          if (opacityPercent < 0)
-            opacityPercent = 0;
-
-          Vel(toast, {left: deltaX, opacity: opacityPercent }, {duration: 50, queue: false, easing: 'easeOutQuad'});
-
-        });
-
-        hammerHandler.on('panend', function(e) {
-          var deltaX = e.deltaX;
-          var activationDistance = 80;
-
-          // If toast dragged past activation point
-          if (Math.abs(deltaX) > activationDistance) {
-            Vel(toast, {marginTop: '-40px'}, { duration: 375,
-                easing: 'easeOutExpo',
-                queue: false,
-                complete: function(){
-                  if(typeof(completeCallback) === "function") {
-                    completeCallback();
-                  }
-                  toast.parentNode.removeChild(toast);
-                }
-            });
-
-          } else {
-            toast.classList.remove('panning');
-            // Put toast back into original position
-            Vel(toast, { left: 0, opacity: 1 }, { duration: 300,
-              easing: 'easeOutExpo',
-              queue: false
-            });
-
-          }
-        });
-
-        return toast;
+      for (var i = 0, count = classes.length; i < count; i++) {
+        toast.classList.add(classes[i]);
+      }
     }
+  // If type of parameter is HTML Element
+    if ( typeof HTMLElement === "object" ? html instanceof HTMLElement : html && typeof html === "object" && html !== null && html.nodeType === 1 && typeof html.nodeName==="string"
+) {
+      toast.appendChild(html);
+    }
+    else if (html instanceof jQuery) {
+      // Check if it is jQuery object
+      toast.appendChild(html[0]);
+    }
+    else {
+      // Insert as text;
+      toast.innerHTML = html;
+    }
+    // Bind hammer
+    var hammerHandler = new Hammer(toast, {prevent_default: false});
+    hammerHandler.on('pan', function(e) {
+      var deltaX = e.deltaX;
+      var activationDistance = 80;
+
+      // Change toast state
+      if (!toast.classList.contains('panning')){
+        toast.classList.add('panning');
+      }
+
+      var opacityPercent = 1-Math.abs(deltaX / activationDistance);
+      if (opacityPercent < 0)
+        opacityPercent = 0;
+
+      Vel(toast, {left: deltaX, opacity: opacityPercent }, {duration: 50, queue: false, easing: 'easeOutQuad'});
+
+    });
+
+    hammerHandler.on('panend', function(e) {
+      var deltaX = e.deltaX;
+      var activationDistance = 80;
+
+      // If toast dragged past activation point
+      if (Math.abs(deltaX) > activationDistance) {
+        Vel(toast, {marginTop: '-40px'}, { duration: 375,
+          easing: 'easeOutExpo',
+          queue: false,
+          complete: function(){
+            if(typeof(completeCallback) === "function") {
+              completeCallback();
+            }
+            toast.parentNode.removeChild(toast);
+          }
+        });
+
+      } else {
+        toast.classList.remove('panning');
+        // Put toast back into original position
+        Vel(toast, { left: 0, opacity: 1 }, { duration: 300,
+          easing: 'easeOutExpo',
+          queue: false
+        });
+
+      }
+    });
+
+    return toast;
+  }
 };
 (function ($) {
 
@@ -11283,42 +11507,54 @@ Materialize.toast = function (message, displayLength, className, completeCallbac
       var defaults = {
         menuWidth: 300,
         edge: 'left',
-        closeOnClick: false
+        closeOnClick: false,
+        draggable: true
       };
       options = $.extend(defaults, options);
 
       $(this).each(function(){
         var $this = $(this);
-        var menu_id = $("#"+ $this.attr('data-activates'));
+        var menuId = $this.attr('data-activates');
+        var menu = $("#"+ menuId);
 
         // Set to width
         if (options.menuWidth != 300) {
-          menu_id.css('width', options.menuWidth);
+          menu.css('width', options.menuWidth);
         }
 
         // Add Touch Area
-        var dragTarget = $('<div class="drag-target"></div>');
-        $('body').append(dragTarget);
+        var $dragTarget = $('.drag-target[data-sidenav="' + menuId + '"]');
+        if (options.draggable) {
+          // Regenerate dragTarget
+          if ($dragTarget.length) {
+            $dragTarget.remove();
+          }
+
+          $dragTarget = $('<div class="drag-target"></div>').attr('data-sidenav', menuId);
+          $('body').append($dragTarget);
+        } else {
+          $dragTarget = $();
+        }
 
         if (options.edge == 'left') {
-          menu_id.css('transform', 'translateX(-100%)');
-          dragTarget.css({'left': 0}); // Add Touch Area
+          menu.css('transform', 'translateX(-100%)');
+          $dragTarget.css({'left': 0}); // Add Touch Area
         }
         else {
-          menu_id.addClass('right-aligned') // Change text-alignment to right
+          menu.addClass('right-aligned') // Change text-alignment to right
             .css('transform', 'translateX(100%)');
-          dragTarget.css({'right': 0}); // Add Touch Area
+          $dragTarget.css({'right': 0}); // Add Touch Area
         }
 
         // If fixed sidenav, bring menu out
-        if (menu_id.hasClass('fixed')) {
+        if (menu.hasClass('fixed')) {
             if (window.innerWidth > 992) {
-              menu_id.css('transform', 'translateX(0)');
+              menu.css('transform', 'translateX(0)');
             }
           }
 
         // Window resize to reset on large screens fixed
-        if (menu_id.hasClass('fixed')) {
+        if (menu.hasClass('fixed')) {
           $(window).resize( function() {
             if (window.innerWidth > 992) {
               // Close menu if window is resized bigger than 992 and user has fixed sidenav
@@ -11326,16 +11562,16 @@ Materialize.toast = function (message, displayLength, className, completeCallbac
                 removeMenu(true);
               }
               else {
-                // menu_id.removeAttr('style');
-                menu_id.css('transform', 'translateX(0%)');
-                // menu_id.css('width', options.menuWidth);
+                // menu.removeAttr('style');
+                menu.css('transform', 'translateX(0%)');
+                // menu.css('width', options.menuWidth);
               }
             }
             else if (menuOut === false){
               if (options.edge === 'left') {
-                menu_id.css('transform', 'translateX(-100%)');
+                menu.css('transform', 'translateX(-100%)');
               } else {
-                menu_id.css('transform', 'translateX(100%)');
+                menu.css('transform', 'translateX(100%)');
               }
 
             }
@@ -11345,12 +11581,12 @@ Materialize.toast = function (message, displayLength, className, completeCallbac
 
         // if closeOnClick, then add close event for all a tags in side sideNav
         if (options.closeOnClick === true) {
-          menu_id.on("click.itemclick", "a:not(.collapsible-header)", function(){
+          menu.on("click.itemclick", "a:not(.collapsible-header)", function(){
             removeMenu();
           });
         }
 
-        function removeMenu(restoreNav) {
+        var removeMenu = function(restoreNav) {
           panning = false;
           menuOut = false;
           // Reenable scrolling
@@ -11366,8 +11602,8 @@ Materialize.toast = function (message, displayLength, className, completeCallbac
             } });
           if (options.edge === 'left') {
             // Reset phantom div
-            dragTarget.css({width: '', right: '', left: '0'});
-            menu_id.velocity(
+            $dragTarget.css({width: '', right: '', left: '0'});
+            menu.velocity(
               {'translateX': '-100%'},
               { duration: 200,
                 queue: false,
@@ -11375,8 +11611,8 @@ Materialize.toast = function (message, displayLength, className, completeCallbac
                 complete: function() {
                   if (restoreNav === true) {
                     // Restore Fixed sidenav
-                    menu_id.removeAttr('style');
-                    menu_id.css('width', options.menuWidth);
+                    menu.removeAttr('style');
+                    menu.css('width', options.menuWidth);
                   }
                 }
 
@@ -11384,8 +11620,8 @@ Materialize.toast = function (message, displayLength, className, completeCallbac
           }
           else {
             // Reset phantom div
-            dragTarget.css({width: '', right: '0', left: ''});
-            menu_id.velocity(
+            $dragTarget.css({width: '', right: '0', left: ''});
+            menu.velocity(
               {'translateX': '100%'},
               { duration: 200,
                 queue: false,
@@ -11393,13 +11629,13 @@ Materialize.toast = function (message, displayLength, className, completeCallbac
                 complete: function() {
                   if (restoreNav === true) {
                     // Restore Fixed sidenav
-                    menu_id.removeAttr('style');
-                    menu_id.css('width', options.menuWidth);
+                    menu.removeAttr('style');
+                    menu.css('width', options.menuWidth);
                   }
                 }
               });
           }
-        }
+        };
 
 
 
@@ -11407,206 +11643,218 @@ Materialize.toast = function (message, displayLength, className, completeCallbac
         var panning = false;
         var menuOut = false;
 
-        dragTarget.on('click', function(){
-          if (menuOut) {
-            removeMenu();
-          }
-        });
-
-        dragTarget.hammer({
-          prevent_default: false
-        }).bind('pan', function(e) {
-
-          if (e.gesture.pointerType == "touch") {
-
-            var direction = e.gesture.direction;
-            var x = e.gesture.center.x;
-            var y = e.gesture.center.y;
-            var velocityX = e.gesture.velocityX;
-
-            // Disable Scrolling
-            var $body = $('body');
-            var oldWidth = $body.innerWidth();
-            $body.css('overflow', 'hidden');
-            $body.width(oldWidth);
-
-            // If overlay does not exist, create one and if it is clicked, close menu
-            if ($('#sidenav-overlay').length === 0) {
-              var overlay = $('<div id="sidenav-overlay"></div>');
-              overlay.css('opacity', 0).click( function(){
-                removeMenu();
-              });
-              $('body').append(overlay);
-            }
-
-            // Keep within boundaries
-            if (options.edge === 'left') {
-              if (x > options.menuWidth) { x = options.menuWidth; }
-              else if (x < 0) { x = 0; }
-            }
-
-            if (options.edge === 'left') {
-              // Left Direction
-              if (x < (options.menuWidth / 2)) { menuOut = false; }
-              // Right Direction
-              else if (x >= (options.menuWidth / 2)) { menuOut = true; }
-              menu_id.css('transform', 'translateX(' + (x - options.menuWidth) + 'px)');
-            }
-            else {
-              // Left Direction
-              if (x < (window.innerWidth - options.menuWidth / 2)) {
-                menuOut = true;
-              }
-              // Right Direction
-              else if (x >= (window.innerWidth - options.menuWidth / 2)) {
-               menuOut = false;
-             }
-              var rightPos = (x - options.menuWidth / 2);
-              if (rightPos < 0) {
-                rightPos = 0;
-              }
-
-              menu_id.css('transform', 'translateX(' + rightPos + 'px)');
-            }
-
-
-            // Percentage overlay
-            var overlayPerc;
-            if (options.edge === 'left') {
-              overlayPerc = x / options.menuWidth;
-              $('#sidenav-overlay').velocity({opacity: overlayPerc }, {duration: 10, queue: false, easing: 'easeOutQuad'});
-            }
-            else {
-              overlayPerc = Math.abs((x - window.innerWidth) / options.menuWidth);
-              $('#sidenav-overlay').velocity({opacity: overlayPerc }, {duration: 10, queue: false, easing: 'easeOutQuad'});
-            }
-          }
-
-        }).bind('panend', function(e) {
-
-          if (e.gesture.pointerType == "touch") {
-            var velocityX = e.gesture.velocityX;
-            var x = e.gesture.center.x;
-            var leftPos = x - options.menuWidth;
-            var rightPos = x - options.menuWidth / 2;
-            if (leftPos > 0 ) {
-              leftPos = 0;
-            }
-            if (rightPos < 0) {
-              rightPos = 0;
-            }
-            panning = false;
-
-            if (options.edge === 'left') {
-              // If velocityX <= 0.3 then the user is flinging the menu closed so ignore menuOut
-              if ((menuOut && velocityX <= 0.3) || velocityX < -0.5) {
-                // Return menu to open
-                if (leftPos !== 0) {
-                  menu_id.velocity({'translateX': [0, leftPos]}, {duration: 300, queue: false, easing: 'easeOutQuad'});
-                }
-
-                $('#sidenav-overlay').velocity({opacity: 1 }, {duration: 50, queue: false, easing: 'easeOutQuad'});
-                dragTarget.css({width: '50%', right: 0, left: ''});
-                menuOut = true;
-              }
-              else if (!menuOut || velocityX > 0.3) {
-                // Enable Scrolling
-                $('body').css({
-                  overflow: '',
-                  width: ''
-                });
-                // Slide menu closed
-                menu_id.velocity({'translateX': [-1 * options.menuWidth - 10, leftPos]}, {duration: 200, queue: false, easing: 'easeOutQuad'});
-                $('#sidenav-overlay').velocity({opacity: 0 }, {duration: 200, queue: false, easing: 'easeOutQuad',
-                  complete: function () {
-                    $(this).remove();
-                  }});
-                dragTarget.css({width: '10px', right: '', left: 0});
-              }
-            }
-            else {
-              if ((menuOut && velocityX >= -0.3) || velocityX > 0.5) {
-                // Return menu to open
-                if (rightPos !== 0) {
-                  menu_id.velocity({'translateX': [0, rightPos]}, {duration: 300, queue: false, easing: 'easeOutQuad'});
-                }
-
-                $('#sidenav-overlay').velocity({opacity: 1 }, {duration: 50, queue: false, easing: 'easeOutQuad'});
-                dragTarget.css({width: '50%', right: '', left: 0});
-                menuOut = true;
-              }
-              else if (!menuOut || velocityX < -0.3) {
-                // Enable Scrolling
-                $('body').css({
-                  overflow: '',
-                  width: ''
-                });
-
-                // Slide menu closed
-                menu_id.velocity({'translateX': [options.menuWidth + 10, rightPos]}, {duration: 200, queue: false, easing: 'easeOutQuad'});
-                $('#sidenav-overlay').velocity({opacity: 0 }, {duration: 200, queue: false, easing: 'easeOutQuad',
-                  complete: function () {
-                    $(this).remove();
-                  }});
-                dragTarget.css({width: '10px', right: 0, left: ''});
-              }
-            }
-
-          }
-        });
-
-          $this.click(function() {
-            if (menuOut === true) {
-              menuOut = false;
-              panning = false;
+        if (options.draggable) {
+          $dragTarget.on('click', function(){
+            if (menuOut) {
               removeMenu();
             }
-            else {
+          });
+
+          $dragTarget.hammer({
+            prevent_default: false
+          }).bind('pan', function(e) {
+
+            if (e.gesture.pointerType == "touch") {
+
+              var direction = e.gesture.direction;
+              var x = e.gesture.center.x;
+              var y = e.gesture.center.y;
+              var velocityX = e.gesture.velocityX;
 
               // Disable Scrolling
               var $body = $('body');
+              var $overlay = $('#sidenav-overlay');
               var oldWidth = $body.innerWidth();
               $body.css('overflow', 'hidden');
               $body.width(oldWidth);
 
-              // Push current drag target on top of DOM tree
-              $('body').append(dragTarget);
+              // If overlay does not exist, create one and if it is clicked, close menu
+              if ($overlay.length === 0) {
+                $overlay = $('<div id="sidenav-overlay"></div>');
+                $overlay.css('opacity', 0).click( function(){
+                  removeMenu();
+                });
+                $('body').append($overlay);
+              }
+
+              // Keep within boundaries
+              if (options.edge === 'left') {
+                if (x > options.menuWidth) { x = options.menuWidth; }
+                else if (x < 0) { x = 0; }
+              }
 
               if (options.edge === 'left') {
-                dragTarget.css({width: '50%', right: 0, left: ''});
-                menu_id.velocity({'translateX': [0, -1 * options.menuWidth]}, {duration: 300, queue: false, easing: 'easeOutQuad'});
+                // Left Direction
+                if (x < (options.menuWidth / 2)) { menuOut = false; }
+                // Right Direction
+                else if (x >= (options.menuWidth / 2)) { menuOut = true; }
+                menu.css('transform', 'translateX(' + (x - options.menuWidth) + 'px)');
               }
               else {
-                dragTarget.css({width: '50%', right: '', left: 0});
-                menu_id.velocity({'translateX': [0, options.menuWidth]}, {duration: 300, queue: false, easing: 'easeOutQuad'});
+                // Left Direction
+                if (x < (window.innerWidth - options.menuWidth / 2)) {
+                  menuOut = true;
+                }
+                // Right Direction
+                else if (x >= (window.innerWidth - options.menuWidth / 2)) {
+                 menuOut = false;
+               }
+                var rightPos = (x - options.menuWidth / 2);
+                if (rightPos < 0) {
+                  rightPos = 0;
+                }
+
+                menu.css('transform', 'translateX(' + rightPos + 'px)');
               }
 
-              var overlay = $('<div id="sidenav-overlay"></div>');
-              overlay.css('opacity', 0)
-              .click(function(){
-                menuOut = false;
-                panning = false;
-                removeMenu();
-                overlay.velocity({opacity: 0}, {duration: 300, queue: false, easing: 'easeOutQuad',
-                  complete: function() {
-                    $(this).remove();
-                  } });
 
-              });
-              $('body').append(overlay);
-              overlay.velocity({opacity: 1}, {duration: 300, queue: false, easing: 'easeOutQuad',
-                complete: function () {
-                  menuOut = true;
-                  panning = false;
-                }
-              });
+              // Percentage overlay
+              var overlayPerc;
+              if (options.edge === 'left') {
+                overlayPerc = x / options.menuWidth;
+                $overlay.velocity({opacity: overlayPerc }, {duration: 10, queue: false, easing: 'easeOutQuad'});
+              }
+              else {
+                overlayPerc = Math.abs((x - window.innerWidth) / options.menuWidth);
+                $overlay.velocity({opacity: overlayPerc }, {duration: 10, queue: false, easing: 'easeOutQuad'});
+              }
             }
 
-            return false;
+          }).bind('panend', function(e) {
+
+            if (e.gesture.pointerType == "touch") {
+              var $overlay = $('<div id="sidenav-overlay"></div>');
+              var velocityX = e.gesture.velocityX;
+              var x = e.gesture.center.x;
+              var leftPos = x - options.menuWidth;
+              var rightPos = x - options.menuWidth / 2;
+              if (leftPos > 0 ) {
+                leftPos = 0;
+              }
+              if (rightPos < 0) {
+                rightPos = 0;
+              }
+              panning = false;
+
+              if (options.edge === 'left') {
+                // If velocityX <= 0.3 then the user is flinging the menu closed so ignore menuOut
+                if ((menuOut && velocityX <= 0.3) || velocityX < -0.5) {
+                  // Return menu to open
+                  if (leftPos !== 0) {
+                    menu.velocity({'translateX': [0, leftPos]}, {duration: 300, queue: false, easing: 'easeOutQuad'});
+                  }
+
+                  $overlay.velocity({opacity: 1 }, {duration: 50, queue: false, easing: 'easeOutQuad'});
+                  $dragTarget.css({width: '50%', right: 0, left: ''});
+                  menuOut = true;
+                }
+                else if (!menuOut || velocityX > 0.3) {
+                  // Enable Scrolling
+                  $('body').css({
+                    overflow: '',
+                    width: ''
+                  });
+                  // Slide menu closed
+                  menu.velocity({'translateX': [-1 * options.menuWidth - 10, leftPos]}, {duration: 200, queue: false, easing: 'easeOutQuad'});
+                  $overlay.velocity({opacity: 0 }, {duration: 200, queue: false, easing: 'easeOutQuad',
+                    complete: function () {
+                      $(this).remove();
+                    }});
+                  $dragTarget.css({width: '10px', right: '', left: 0});
+                }
+              }
+              else {
+                if ((menuOut && velocityX >= -0.3) || velocityX > 0.5) {
+                  // Return menu to open
+                  if (rightPos !== 0) {
+                    menu.velocity({'translateX': [0, rightPos]}, {duration: 300, queue: false, easing: 'easeOutQuad'});
+                  }
+
+                  $overlay.velocity({opacity: 1 }, {duration: 50, queue: false, easing: 'easeOutQuad'});
+                  $dragTarget.css({width: '50%', right: '', left: 0});
+                  menuOut = true;
+                }
+                else if (!menuOut || velocityX < -0.3) {
+                  // Enable Scrolling
+                  $('body').css({
+                    overflow: '',
+                    width: ''
+                  });
+
+                  // Slide menu closed
+                  menu.velocity({'translateX': [options.menuWidth + 10, rightPos]}, {duration: 200, queue: false, easing: 'easeOutQuad'});
+                  $overlay.velocity({opacity: 0 }, {duration: 200, queue: false, easing: 'easeOutQuad',
+                    complete: function () {
+                      $(this).remove();
+                    }});
+                  $dragTarget.css({width: '10px', right: 0, left: ''});
+                }
+              }
+
+            }
           });
+        }
+
+        $this.off('click.sidenav').on('click.sidenav', function() {
+          if (menuOut === true) {
+            menuOut = false;
+            panning = false;
+            removeMenu();
+          }
+          else {
+
+            // Disable Scrolling
+            var $body = $('body');
+            var $overlay = $('<div id="sidenav-overlay"></div>');
+            var oldWidth = $body.innerWidth();
+            $body.css('overflow', 'hidden');
+            $body.width(oldWidth);
+
+            // Push current drag target on top of DOM tree
+            $('body').append($dragTarget);
+
+            if (options.edge === 'left') {
+              $dragTarget.css({width: '50%', right: 0, left: ''});
+              menu.velocity({'translateX': [0, -1 * options.menuWidth]}, {duration: 300, queue: false, easing: 'easeOutQuad'});
+            }
+            else {
+              $dragTarget.css({width: '50%', right: '', left: 0});
+              menu.velocity({'translateX': [0, options.menuWidth]}, {duration: 300, queue: false, easing: 'easeOutQuad'});
+            }
+
+            $overlay.css('opacity', 0)
+            .click(function(){
+              menuOut = false;
+              panning = false;
+              removeMenu();
+              $overlay.velocity({opacity: 0}, {duration: 300, queue: false, easing: 'easeOutQuad',
+                complete: function() {
+                  $(this).remove();
+                } });
+
+            });
+            $('body').append($overlay);
+            $overlay.velocity({opacity: 1}, {duration: 300, queue: false, easing: 'easeOutQuad',
+              complete: function () {
+                menuOut = true;
+                panning = false;
+              }
+            });
+          }
+
+          return false;
+        });
       });
 
 
+    },
+    destroy: function () {
+      var $overlay = $('#sidenav-overlay');
+      var $dragTarget = $('.drag-target[data-sidenav="' + $(this).attr('data-activates') + '"]');
+      $overlay.trigger('click');
+      $dragTarget.remove();
+      $(this).off('click');
+      $overlay.remove();
     },
     show : function() {
       this.trigger('click');
@@ -11617,16 +11865,16 @@ Materialize.toast = function (message, displayLength, className, completeCallbac
   };
 
 
-    $.fn.sideNav = function(methodOrOptions) {
-      if ( methods[methodOrOptions] ) {
-        return methods[ methodOrOptions ].apply( this, Array.prototype.slice.call( arguments, 1 ));
-      } else if ( typeof methodOrOptions === 'object' || ! methodOrOptions ) {
-        // Default to "init"
-        return methods.init.apply( this, arguments );
-      } else {
-        $.error( 'Method ' +  methodOrOptions + ' does not exist on jQuery.sideNav' );
-      }
-    }; // Plugin end
+  $.fn.sideNav = function(methodOrOptions) {
+    if ( methods[methodOrOptions] ) {
+      return methods[ methodOrOptions ].apply( this, Array.prototype.slice.call( arguments, 1 ));
+    } else if ( typeof methodOrOptions === 'object' || ! methodOrOptions ) {
+      // Default to "init"
+      return methods.init.apply( this, arguments );
+    } else {
+      $.error( 'Method ' +  methodOrOptions + ' does not exist on jQuery.sideNav' );
+    }
+  }; // Plugin end
 }( jQuery ));
 /**
  * Extend jquery with a scrollspy plugin.
@@ -11691,7 +11939,7 @@ Materialize.toast = function (message, displayLength, className, completeCallbac
 	/**
 	 * Called when the user scrolls the window
 	 */
-	function onScroll() {
+	function onScroll(scrollOffset) {
 		// unique tick id
 		++ticks;
 
@@ -11702,8 +11950,7 @@ Materialize.toast = function (message, displayLength, className, completeCallbac
 			bottom = top + jWindow.height();
 
 		// determine which elements are in view
-//        + 60 accounts for fixed nav
-		var intersections = findElements(top+offset.top + 200, right+offset.right, bottom+offset.bottom, left+offset.left);
+		var intersections = findElements(top+offset.top + scrollOffset || 200, right+offset.right, bottom+offset.bottom, left+offset.left);
 		$.each(intersections, function(i, element) {
 
 			var lastTick = element.data('scrollSpy:ticks');
@@ -11737,57 +11984,6 @@ Materialize.toast = function (message, displayLength, className, completeCallbac
 		jWindow.trigger('scrollSpy:winSize');
 	}
 
-	/**
-	 * Get time in ms
-   * @license https://raw.github.com/jashkenas/underscore/master/LICENSE
-	 * @type {function}
-	 * @return {number}
-	 */
-	var getTime = (Date.now || function () {
-		return new Date().getTime();
-	});
-
-	/**
-	 * Returns a function, that, when invoked, will only be triggered at most once
-	 * during a given window of time. Normally, the throttled function will run
-	 * as much as it can, without ever going more than once per `wait` duration;
-	 * but if you'd like to disable the execution on the leading edge, pass
-	 * `{leading: false}`. To disable execution on the trailing edge, ditto.
-	 * @license https://raw.github.com/jashkenas/underscore/master/LICENSE
-	 * @param {function} func
-	 * @param {number} wait
-	 * @param {Object=} options
-	 * @returns {Function}
-	 */
-	function throttle(func, wait, options) {
-		var context, args, result;
-		var timeout = null;
-		var previous = 0;
-		options || (options = {});
-		var later = function () {
-			previous = options.leading === false ? 0 : getTime();
-			timeout = null;
-			result = func.apply(context, args);
-			context = args = null;
-		};
-		return function () {
-			var now = getTime();
-			if (!previous && options.leading === false) previous = now;
-			var remaining = wait - (now - previous);
-			context = this;
-			args = arguments;
-			if (remaining <= 0) {
-				clearTimeout(timeout);
-				timeout = null;
-				previous = now;
-				result = func.apply(context, args);
-				context = args = null;
-			} else if (!timeout && options.trailing !== false) {
-				timeout = setTimeout(later, remaining);
-			}
-			return result;
-		};
-	};
 
 	/**
 	 * Enables ScrollSpy using a selector
@@ -11815,7 +12011,7 @@ Materialize.toast = function (message, displayLength, className, completeCallbac
 			// Smooth scroll to section
 		  $('a[href="#' + $(element).attr('id') + '"]').click(function(e) {
 		    e.preventDefault();
-		    var offset = $(this.hash).offset().top + 1;
+		    var offset = $(Materialize.escapeHash(this.hash)).offset().top + 1;
 	    	$('html, body').animate({ scrollTop: offset - options.scrollOffset }, {duration: 400, queue: false, easing: 'easeOutCubic'});
 		  });
 		});
@@ -11825,9 +12021,11 @@ Materialize.toast = function (message, displayLength, className, completeCallbac
 		offset.bottom = options.offsetBottom || 0;
 		offset.left = options.offsetLeft || 0;
 
-		var throttledScroll = throttle(onScroll, options.throttle || 100);
+		var throttledScroll = Materialize.throttle(function() {
+			onScroll(options.scrollOffset);
+		}, options.throttle || 100);
 		var readyScroll = function(){
-			$(document).ready(throttledScroll);
+			$(document).on('turbolinks:load', throttledScroll);
 		};
 
 		if (!isSpying) {
@@ -11893,7 +12091,7 @@ Materialize.toast = function (message, displayLength, className, completeCallbac
 		options = options || {
 			throttle: 100
 		};
-		return jWindow.on('resize', throttle(onWinSize, options.throttle || 100));
+		return jWindow.on('resize', Materialize.throttle(onWinSize, options.throttle || 100));
 	};
 
 	/**
@@ -11913,17 +12111,19 @@ Materialize.toast = function (message, displayLength, className, completeCallbac
 
 })(jQuery);
 (function ($) {
-  $(document).ready(function() {
+  $(document).on('turbolinks:load', function() {
 
     // Function to update labels of text fields
     Materialize.updateTextFields = function() {
       var input_selector = 'input[type=text], input[type=password], input[type=email], input[type=url], input[type=tel], input[type=number], input[type=search], textarea';
       $(input_selector).each(function(index, element) {
-        if ($(element).val().length > 0 || element.autofocus ||$(this).attr('placeholder') !== undefined || $(element)[0].validity.badInput === true) {
-          $(this).siblings('label').addClass('active');
-        }
-        else {
-          $(this).siblings('label').removeClass('active');
+        var $this = $(this);
+        if ($(element).val().length > 0 || element.autofocus || $this.attr('placeholder') !== undefined) {
+          $this.siblings('label').addClass('active');
+        } else if ($(element)[0].validity) {
+          $this.siblings('label').toggleClass('active', $(element)[0].validity.badInput === true);
+        } else {
+          $this.siblings('label').removeClass('active');
         }
       });
     };
@@ -11940,7 +12140,7 @@ Materialize.toast = function (message, displayLength, className, completeCallbac
     });
 
     // Add active if input element has been pre-populated on document ready
-    $(document).ready(function() {
+    $(document).on('turbolinks:load', function() {
       Materialize.updateTextFields();
     });
 
@@ -11982,8 +12182,8 @@ Materialize.toast = function (message, displayLength, className, completeCallbac
     });
 
     window.validate_field = function(object) {
-      var hasLength = object.attr('length') !== undefined;
-      var lenAttr = parseInt(object.attr('length'));
+      var hasLength = object.attr('data-length') !== undefined;
+      var lenAttr = parseInt(object.attr('data-length'));
       var len = object.val().length;
 
       if (object.val().length === 0 && object[0].validity.badInput === false) {
@@ -12195,7 +12395,9 @@ Materialize.toast = function (message, displayLength, className, completeCallbac
     $.fn.autocomplete = function (options) {
       // Defaults
       var defaults = {
-        data: {}
+        data: {},
+        limit: Infinity,
+        onAutocomplete: null
       };
 
       options = $.extend(defaults, options);
@@ -12203,20 +12405,34 @@ Materialize.toast = function (message, displayLength, className, completeCallbac
       return this.each(function() {
         var $input = $(this);
         var data = options.data,
+            count = 0,
+            activeIndex = 0,
+            oldVal,
             $inputDiv = $input.closest('.input-field'); // Div to append on
 
         // Check if data isn't empty
         if (!$.isEmptyObject(data)) {
-          // Create autocomplete element
           var $autocomplete = $('<ul class="autocomplete-content dropdown-content"></ul>');
+          var $oldAutocomplete;
 
-          // Append autocomplete element
+          // Append autocomplete element.
+          // Prevent double structure init.
           if ($inputDiv.length) {
-            $inputDiv.append($autocomplete); // Set ul in body
+            $oldAutocomplete = $inputDiv.children('.autocomplete-content.dropdown-content').first();
+            if (!$oldAutocomplete.length) {
+              $inputDiv.append($autocomplete); // Set ul in body
+            }
           } else {
-            $input.after($autocomplete);
+            $oldAutocomplete = $input.next('.autocomplete-content.dropdown-content');
+            if (!$oldAutocomplete.length) {
+              $input.after($autocomplete);
+            }
+          }
+          if ($oldAutocomplete.length) {
+            $autocomplete = $oldAutocomplete;
           }
 
+          // Highlight partial match.
           var highlight = function(string, $el) {
             var img = $el.find('img');
             var matchStart = $el.text().toLowerCase().indexOf("" + string.toLowerCase() + ""),
@@ -12230,41 +12446,109 @@ Materialize.toast = function (message, displayLength, className, completeCallbac
             }
           };
 
+          // Reset current element position
+          var resetCurrentElement = function() {
+            activeIndex = 0;
+            $autocomplete.find('.active').removeClass('active');
+          }
+
           // Perform search
-          $input.on('keyup', function (e) {
-            // Capture Enter
-            if (e.which === 13) {
-              $autocomplete.find('li').first().click();
+          $input.off('keyup.autocomplete').on('keyup.autocomplete', function (e) {
+            // Reset count.
+            count = 0;
+
+            // Don't capture enter or arrow key usage.
+            if (e.which === 13 ||
+                e.which === 38 ||
+                e.which === 40) {
               return;
             }
 
             var val = $input.val().toLowerCase();
-            $autocomplete.empty();
 
             // Check if the input isn't empty
-            if (val !== '') {
-              for(var key in data) {
-                if (data.hasOwnProperty(key) &&
-                    key.toLowerCase().indexOf(val) !== -1 &&
-                    key.toLowerCase() !== val) {
-                  var autocompleteOption = $('<li></li>');
-                  if(!!data[key]) {
-                    autocompleteOption.append('<img src="'+ data[key] +'" class="right circle"><span>'+ key +'</span>');
-                  } else {
-                    autocompleteOption.append('<span>'+ key +'</span>');
-                  }
-                  $autocomplete.append(autocompleteOption);
+            if (oldVal !== val) {
+              $autocomplete.empty();
+              resetCurrentElement();
 
-                  highlight(val, autocompleteOption);
+              if (val !== '') {
+                for(var key in data) {
+                  if (data.hasOwnProperty(key) &&
+                      key.toLowerCase().indexOf(val) !== -1 &&
+                      key.toLowerCase() !== val) {
+                    // Break if past limit
+                    if (count >= options.limit) {
+                      break;
+                    }
+
+                    var autocompleteOption = $('<li></li>');
+                    if (!!data[key]) {
+                      autocompleteOption.append('<img src="'+ data[key] +'" class="right circle"><span>'+ key +'</span>');
+                    } else {
+                      autocompleteOption.append('<span>'+ key +'</span>');
+                    }
+
+                    $autocomplete.append(autocompleteOption);
+                    highlight(val, autocompleteOption);
+                    count++;
+                  }
                 }
               }
+            }
+
+            // Update oldVal
+            oldVal = val;
+          });
+
+          $input.off('keydown.autocomplete').on('keydown.autocomplete', function (e) {
+            // Arrow keys and enter key usage
+            var keyCode = e.which,
+                liElement,
+                numItems = $autocomplete.children('li').length,
+                $active = $autocomplete.children('.active').first();
+
+            // select element on Enter
+            if (keyCode === 13) {
+              liElement = $autocomplete.children('li').eq(activeIndex);
+              if (liElement.length) {
+                liElement.click();
+                e.preventDefault();
+              }
+              return;
+            }
+
+            // Capture up and down key
+            if ( keyCode === 38 || keyCode === 40 ) {
+              e.preventDefault();
+
+              if (keyCode === 38 &&
+                  activeIndex > 0) {
+                activeIndex--;
+              }
+
+              if (keyCode === 40 &&
+                  activeIndex < (numItems - 1) &&
+                  $active.length) {
+                activeIndex++;
+              }
+
+              $active.removeClass('active');
+              $autocomplete.children('li').eq(activeIndex).addClass('active');
             }
           });
 
           // Set input value
           $autocomplete.on('click', 'li', function () {
-            $input.val($(this).text().trim());
+            var text = $(this).text().trim();
+            $input.val(text);
+            $input.trigger('change');
             $autocomplete.empty();
+            resetCurrentElement();
+
+            // Handle onAutocomplete callback.
+            if (typeof(options.onAutocomplete) === "function") {
+              options.onAutocomplete.call(this, text);
+            }
           });
         }
       });
@@ -12327,9 +12611,9 @@ Materialize.toast = function (message, displayLength, className, completeCallbac
 
           // Check for multiple type.
           if (type === 'multiple') {
-            options.append($('<li class="' + disabledClass + '"><img src="' + icon_url + '"' + classString + '><span><input type="checkbox"' + disabledClass + '/><label></label>' + option.html() + '</span></li>'));
+            options.append($('<li class="' + disabledClass + '"><img alt="" src="' + icon_url + '"' + classString + '><span><input type="checkbox"' + disabledClass + '/><label></label>' + option.html() + '</span></li>'));
           } else {
-            options.append($('<li class="' + disabledClass + optgroupClass + '"><img src="' + icon_url + '"' + classString + '><span>' + option.html() + '</span></li>'));
+            options.append($('<li class="' + disabledClass + optgroupClass + '"><img alt="" src="' + icon_url + '"' + classString + '><span>' + option.html() + '</span></li>'));
           }
           return true;
         }
@@ -12427,10 +12711,14 @@ Materialize.toast = function (message, displayLength, className, completeCallbac
           if (!options.is(':visible')) {
             $(this).trigger('open', ['focus']);
             var label = $(this).val();
+            if (multiple && label.indexOf(',') >= 0) {
+              label = label.split(',')[0];
+            }
+
             var selectedOption = options.find('li').filter(function() {
               return $(this).text().toLowerCase() === label.toLowerCase();
             })[0];
-            activateOption(options, selectedOption);
+            activateOption(options, selectedOption, true);
           }
         },
         'click': function (e){
@@ -12467,13 +12755,20 @@ Materialize.toast = function (message, displayLength, className, completeCallbac
         });
       }
 
-      // Make option as selected and scroll to selected position
-      var activateOption = function(collection, newOption) {
+      /**
+       * Make option as selected and scroll to selected position
+       * @param {jQuery} collection  Select options jQuery element
+       * @param {Element} newOption  element of the new option
+       * @param {Boolean} firstActivation  If on first activation of select
+       */
+      var activateOption = function(collection, newOption, firstActivation) {
         if (newOption) {
           collection.find('li.selected').removeClass('selected');
           var option = $(newOption);
           option.addClass('selected');
-          options.scrollTo(option);
+          if (!multiple || !!firstActivation) {
+            options.scrollTo(option);
+          }
         }
       };
 
@@ -12775,10 +13070,13 @@ Materialize.toast = function (message, displayLength, className, completeCallbac
             var direction = e.gesture.direction;
             var x = e.gesture.deltaX;
             var velocityX = e.gesture.velocityX;
+            var velocityY = e.gesture.velocityY;
 
             $curr_slide = $slider.find('.active');
-            $curr_slide.velocity({ translateX: x
-                }, {duration: 50, queue: false, easing: 'easeOutQuad'});
+            if (Math.abs(velocityX) > Math.abs(velocityY)) {
+              $curr_slide.velocity({ translateX: x
+                  }, {duration: 50, queue: false, easing: 'easeOutQuad'});
+            }
 
             // Swipe Left
             if (direction === 4 && (x > ($this.innerWidth() / 2) || velocityX < -0.65)) {
@@ -12903,19 +13201,19 @@ Materialize.toast = function (message, displayLength, className, completeCallbac
   };
 
 
-    $.fn.slider = function(methodOrOptions) {
-      if ( methods[methodOrOptions] ) {
-        return methods[ methodOrOptions ].apply( this, Array.prototype.slice.call( arguments, 1 ));
-      } else if ( typeof methodOrOptions === 'object' || ! methodOrOptions ) {
-        // Default to "init"
-        return methods.init.apply( this, arguments );
-      } else {
-        $.error( 'Method ' +  methodOrOptions + ' does not exist on jQuery.tooltip' );
-      }
-    }; // Plugin end
+  $.fn.slider = function(methodOrOptions) {
+    if ( methods[methodOrOptions] ) {
+      return methods[ methodOrOptions ].apply( this, Array.prototype.slice.call( arguments, 1 ));
+    } else if ( typeof methodOrOptions === 'object' || ! methodOrOptions ) {
+      // Default to "init"
+      return methods.init.apply( this, arguments );
+    } else {
+      $.error( 'Method ' +  methodOrOptions + ' does not exist on jQuery.tooltip' );
+    }
+  }; // Plugin end
 }( jQuery ));
 (function ($) {
-  $(document).ready(function() {
+  $(document).on('turbolinks:load', function() {
 
     $(document).on('click.card', '.card', function (e) {
       if ($(this).find('> .card-reveal').length) {
@@ -12941,18 +13239,19 @@ Materialize.toast = function (message, displayLength, className, completeCallbac
   });
 }( jQuery ));
 (function ($) {
-  var chipsHandleEvents = false;
   var materialChipsDefaults = {
     data: [],
     placeholder: '',
     secondaryPlaceholder: '',
+    autocompleteData: {},
+    autocompleteLimit: Infinity,
   };
 
-  $(document).ready(function(){
+  $(document).on('turbolinks:load', function() {
     // Handle removal of static chips.
     $(document).on('click', '.chip .close', function(e){
       var $chips = $(this).closest('.chips');
-      if ($chips.data('initialized')) {
+      if ($chips.attr('data-initialized')) {
         return;
       }
       $(this).closest('.chip').remove();
@@ -12975,11 +13274,8 @@ Materialize.toast = function (message, displayLength, className, completeCallbac
       return this.$el.data('chips');
     }
 
-    if ('options' === options) {
-      return this.$el.data('options');
-    }
-
-    this.$el.data('options', $.extend({}, materialChipsDefaults, options));
+    var curr_options = $.extend({}, materialChipsDefaults, options);
+    self.hasAutocomplete = !$.isEmptyObject(curr_options.autocompleteData);
 
     // Initialize
     this.init = function() {
@@ -12987,40 +13283,46 @@ Materialize.toast = function (message, displayLength, className, completeCallbac
       var chips;
       self.$el.each(function(){
         var $chips = $(this);
-        if ($chips.data('initialized')) {
-          // Prevent double initialization.
-          return;
+        var chipId = Materialize.guid();
+        self.chipId = chipId;
+
+        if (!curr_options.data || !(curr_options.data instanceof Array)) {
+          curr_options.data = [];
         }
-        var options = $chips.data('options');
-        if (!options.data || !options.data instanceof Array) {
-          options.data = [];
-        }
-        $chips.data('chips', options.data);
-        $chips.data('index', i);
-        $chips.data('initialized', true);
+        $chips.data('chips', curr_options.data);
+        $chips.attr('data-index', i);
+        $chips.attr('data-initialized', true);
 
         if (!$chips.hasClass(self.SELS.CHIPS)) {
           $chips.addClass('chips');
         }
 
-        self.chips($chips);
+        self.chips($chips, chipId);
         i++;
       });
     };
 
-    this.handleEvents = function(){
+    this.handleEvents = function() {
       var SELS = self.SELS;
 
-      self.$document.on('click', SELS.CHIPS, function(e){
+      self.$document.off('click.chips-focus', SELS.CHIPS).on('click.chips-focus', SELS.CHIPS, function(e){
         $(e.target).find(SELS.INPUT).focus();
       });
 
-      self.$document.on('click', SELS.CHIP, function(e){
-        $(SELS.CHIP).removeClass('selected');
-        $(this).toggleClass('selected');
+      self.$document.off('click.chips-select', SELS.CHIP).on('click.chips-select', SELS.CHIP, function(e){
+        var $chip = $(e.target);
+        if ($chip.length) {
+          var wasSelected = $chip.hasClass('selected');
+          var $chips = $chip.closest(SELS.CHIPS);
+          $(SELS.CHIP).removeClass('selected');
+
+          if (!wasSelected) {
+            self.selectChip($chip.index(), $chips);
+          }
+        }
       });
 
-      self.$document.on('keydown', function(e){
+      self.$document.off('keydown.chips').on('keydown.chips', function(e){
         if ($(e.target).is('input, textarea')) {
           return;
         }
@@ -13037,10 +13339,9 @@ Materialize.toast = function (message, displayLength, className, completeCallbac
 
         if (e.which === 8 || e.which === 46) {
           e.preventDefault();
-          var chipsIndex = $chips.data('index');
 
           index = $chip.index();
-          self.deleteChip(chipsIndex, index, $chips);
+          self.deleteChip(index, $chips);
 
           var selectIndex = null;
           if ((index + 1) < length) {
@@ -13052,7 +13353,7 @@ Materialize.toast = function (message, displayLength, className, completeCallbac
           if (selectIndex < 0) selectIndex = null;
 
           if (null !== selectIndex) {
-            self.selectChip(chipsIndex, selectIndex, $chips);
+            self.selectChip(selectIndex, $chips);
           }
           if (!length) $chips.find('input').focus();
 
@@ -13063,7 +13364,7 @@ Materialize.toast = function (message, displayLength, className, completeCallbac
             return;
           }
           $(SELS.CHIP).removeClass('selected');
-          self.selectChip($chips.data('index'), index, $chips);
+          self.selectChip(index, $chips);
 
         // right
         } else if (e.which === 39) {
@@ -13073,64 +13374,100 @@ Materialize.toast = function (message, displayLength, className, completeCallbac
             $chips.find('input').focus();
             return;
           }
-          self.selectChip($chips.data('index'), index, $chips);
+          self.selectChip(index, $chips);
         }
       });
 
-      self.$document.on('focusin', SELS.CHIPS + ' ' + SELS.INPUT, function(e){
-        $(e.target).closest(SELS.CHIPS).addClass('focus');
+      self.$document.off('focusin.chips', SELS.CHIPS + ' ' + SELS.INPUT).on('focusin.chips', SELS.CHIPS + ' ' + SELS.INPUT, function(e){
+        var $currChips = $(e.target).closest(SELS.CHIPS);
+        $currChips.addClass('focus');
+        $currChips.siblings('label, .prefix').addClass('active');
         $(SELS.CHIP).removeClass('selected');
       });
 
-      self.$document.on('focusout', SELS.CHIPS + ' ' + SELS.INPUT, function(e){
-        $(e.target).closest(SELS.CHIPS).removeClass('focus');
+      self.$document.off('focusout.chips', SELS.CHIPS + ' ' + SELS.INPUT).on('focusout.chips', SELS.CHIPS + ' ' + SELS.INPUT, function(e){
+        var $currChips = $(e.target).closest(SELS.CHIPS);
+        $currChips.removeClass('focus');
+
+        // Remove active if empty
+        if (!$currChips.data('chips').length) {
+          $currChips.siblings('label').removeClass('active');
+        }
+        $currChips.siblings('.prefix').removeClass('active');
       });
 
-      self.$document.on('keydown', SELS.CHIPS + ' ' + SELS.INPUT, function(e){
+      self.$document.off('keydown.chips-add', SELS.CHIPS + ' ' + SELS.INPUT).on('keydown.chips-add', SELS.CHIPS + ' ' + SELS.INPUT, function(e){
         var $target = $(e.target);
         var $chips = $target.closest(SELS.CHIPS);
-        var chipsIndex = $chips.data('index');
         var chipsLength = $chips.children(SELS.CHIP).length;
 
         // enter
         if (13 === e.which) {
+          // Override enter if autocompleting.
+          if (self.hasAutocomplete &&
+              $chips.find('.autocomplete-content.dropdown-content').length &&
+              $chips.find('.autocomplete-content.dropdown-content').children().length) {
+            return;
+          }
+
           e.preventDefault();
-          self.addChip(chipsIndex, {tag: $target.val()}, $chips);
+          self.addChip({tag: $target.val()}, $chips);
           $target.val('');
           return;
         }
 
         // delete or left
-         if ((8 === e.keyCode || 37 === e.keyCode) && '' === $target.val() && chipsLength) {
-          self.selectChip(chipsIndex, chipsLength - 1, $chips);
+        if ((8 === e.keyCode || 37 === e.keyCode) && '' === $target.val() && chipsLength) {
+          e.preventDefault();
+          self.selectChip(chipsLength - 1, $chips);
           $target.blur();
           return;
         }
       });
 
-      self.$document.on('click', SELS.CHIPS + ' ' + SELS.DELETE, function(e) {
+      // Click on delete icon in chip.
+      self.$document.off('click.chips-delete', SELS.CHIPS + ' ' + SELS.DELETE).on('click.chips-delete', SELS.CHIPS + ' ' + SELS.DELETE, function(e) {
         var $target = $(e.target);
         var $chips = $target.closest(SELS.CHIPS);
         var $chip = $target.closest(SELS.CHIP);
         e.stopPropagation();
-        self.deleteChip(
-          $chips.data('index'),
-          $chip.index(),
-          $chips
-        );
+        self.deleteChip($chip.index(), $chips);
         $chips.find('input').focus();
       });
     };
 
-    this.chips = function($chips) {
+    this.chips = function($chips, chipId) {
       var html = '';
-      var options = $chips.data('options');
       $chips.data('chips').forEach(function(elem){
         html += self.renderChip(elem);
       });
-      html += '<input class="input" placeholder="">';
+      html += '<input id="' + chipId +'" class="input" placeholder="">';
       $chips.html(html);
       self.setPlaceholder($chips);
+
+      // Set for attribute for label
+      var label = $chips.next('label');
+      if (label.length) {
+        label.attr('for', chipId);
+
+        if ($chips.data('chips').length) {
+          label.addClass('active');
+        }
+      }
+
+      // Setup autocomplete if needed.
+      var input = $('#' + chipId);
+      if (self.hasAutocomplete) {
+        input.autocomplete({
+          data: curr_options.autocompleteData,
+          limit: curr_options.autocompleteLimit,
+          onAutocomplete: function(val) {
+            self.addChip({tag: val}, $chips);
+            input.val('');
+            input.focus();
+          },
+        })
+      }
     };
 
     this.renderChip = function(elem) {
@@ -13146,11 +13483,11 @@ Materialize.toast = function (message, displayLength, className, completeCallbac
     };
 
     this.setPlaceholder = function($chips) {
-      var options = $chips.data('options');
-      if ($chips.data('chips').length && options.placeholder) {
-        $chips.find('input').prop('placeholder', options.placeholder);
-      } else if (!$chips.data('chips').length && options.secondaryPlaceholder) {
-        $chips.find('input').prop('placeholder', options.secondaryPlaceholder);
+      if ($chips.data('chips').length && curr_options.placeholder) {
+        $chips.find('input').prop('placeholder', curr_options.placeholder);
+
+      } else if (!$chips.data('chips').length && curr_options.secondaryPlaceholder) {
+        $chips.find('input').prop('placeholder', curr_options.secondaryPlaceholder);
       }
     };
 
@@ -13166,27 +13503,42 @@ Materialize.toast = function (message, displayLength, className, completeCallbac
       return '' !== elem.tag && !exists;
     };
 
-    this.addChip = function(chipsIndex, elem, $chips) {
+    this.addChip = function(elem, $chips) {
       if (!self.isValid($chips, elem)) {
         return;
       }
-      var options = $chips.data('options');
       var chipHtml = self.renderChip(elem);
-      $chips.data('chips').push(elem);
+      var newData = [];
+      var oldData = $chips.data('chips');
+      for (var i = 0; i < oldData.length; i++) {
+        newData.push(oldData[i]);
+      }
+      newData.push(elem);
+
+      $chips.data('chips', newData);
       $(chipHtml).insertBefore($chips.find('input'));
       $chips.trigger('chip.add', elem);
       self.setPlaceholder($chips);
     };
 
-    this.deleteChip = function(chipsIndex, chipIndex, $chips) {
+    this.deleteChip = function(chipIndex, $chips) {
       var chip = $chips.data('chips')[chipIndex];
       $chips.find('.chip').eq(chipIndex).remove();
-      $chips.data('chips').splice(chipIndex, 1);
+
+      var newData = [];
+      var oldData = $chips.data('chips');
+      for (var i = 0; i < oldData.length; i++) {
+        if (i !== chipIndex) {
+          newData.push(oldData[i]);
+        }
+      }
+
+      $chips.data('chips', newData);
       $chips.trigger('chip.delete', chip);
       self.setPlaceholder($chips);
     };
 
-    this.selectChip = function(chipsIndex, chipIndex, $chips) {
+    this.selectChip = function(chipIndex, $chips) {
       var $chip = $chips.find('.chip').eq(chipIndex);
       if ($chip && false === $chip.hasClass('selected')) {
         $chip.addClass('selected');
@@ -13201,10 +13553,7 @@ Materialize.toast = function (message, displayLength, className, completeCallbac
     // init
     this.init();
 
-    if (!chipsHandleEvents) {
-      this.handleEvents();
-      chipsHandleEvents = true;
-    }
+    this.handleEvents();
   };
 }( jQuery ));
 (function ($) {
@@ -13279,23 +13628,23 @@ Materialize.toast = function (message, displayLength, className, completeCallbac
   };
 }( jQuery ));
 (function ($) {
-  $(document).ready(function() {
+  $(document).on('turbolinks:load', function() {
 
     // jQuery reverse
     $.fn.reverse = [].reverse;
 
     // Hover behaviour: make sure this doesn't work on .click-to-toggle FABs!
-    $(document).on('mouseenter.fixedActionBtn', '.fixed-action-btn:not(.click-to-toggle)', function(e) {
+    $(document).on('mouseenter.fixedActionBtn', '.fixed-action-btn:not(.click-to-toggle):not(.toolbar)', function(e) {
       var $this = $(this);
       openFABMenu($this);
     });
-    $(document).on('mouseleave.fixedActionBtn', '.fixed-action-btn:not(.click-to-toggle)', function(e) {
+    $(document).on('mouseleave.fixedActionBtn', '.fixed-action-btn:not(.click-to-toggle):not(.toolbar)', function(e) {
       var $this = $(this);
       closeFABMenu($this);
     });
 
     // Toggle-on-click behaviour.
-    $(document).on('click.fixedActionBtn', '.fixed-action-btn.click-to-toggle > a', function(e) {
+    $(document).on('click.fabClickToggle', '.fixed-action-btn.click-to-toggle > a', function(e) {
       var $this = $(this);
       var $menu = $this.parent();
       if ($menu.hasClass('active')) {
@@ -13303,6 +13652,13 @@ Materialize.toast = function (message, displayLength, className, completeCallbac
       } else {
         openFABMenu($menu);
       }
+    });
+
+    // Toolbar transition behaviour.
+    $(document).on('click.fabToolbar', '.fixed-action-btn.toolbar > a', function(e) {
+      var $this = $(this);
+      var $menu = $this.parent();
+      FABtoToolbar($menu);
     });
 
   });
@@ -13313,12 +13669,18 @@ Materialize.toast = function (message, displayLength, className, completeCallbac
     },
     closeFAB: function() {
       closeFABMenu($(this));
+    },
+    openToolbar: function() {
+      FABtoToolbar($(this));
+    },
+    closeToolbar: function() {
+      toolbarToFAB($(this));
     }
   });
 
 
   var openFABMenu = function (btn) {
-    $this = btn;
+    var $this = btn;
     if ($this.hasClass('active') === false) {
 
       // Get direction option
@@ -13347,7 +13709,7 @@ Materialize.toast = function (message, displayLength, className, completeCallbac
   };
 
   var closeFABMenu = function (btn) {
-    $this = btn;
+    var $this = btn;
     // Get direction option
     var horizontal = $this.hasClass('horizontal');
     var offsetY, offsetX;
@@ -13368,10 +13730,173 @@ Materialize.toast = function (message, displayLength, className, completeCallbac
   };
 
 
+  /**
+   * Transform FAB into toolbar
+   * @param  {Object}  object jQuery object
+   */
+  var FABtoToolbar = function(btn) {
+    if (btn.attr('data-open') === "true") {
+      return;
+    }
+
+    var offsetX, offsetY, scaleFactor;
+    var windowWidth = window.innerWidth;
+    var windowHeight = window.innerHeight;
+    var btnRect = btn[0].getBoundingClientRect();
+    var anchor = btn.find('> a').first();
+    var menu = btn.find('> ul').first();
+    var backdrop = $('<div class="fab-backdrop"></div>');
+    var fabColor = anchor.css('background-color');
+    anchor.append(backdrop);
+
+    offsetX = btnRect.left - (windowWidth / 2) + (btnRect.width / 2);
+    offsetY = windowHeight - btnRect.bottom;
+    scaleFactor = windowWidth / backdrop.width();
+    btn.attr('data-origin-bottom', btnRect.bottom);
+    btn.attr('data-origin-left', btnRect.left);
+    btn.attr('data-origin-width', btnRect.width);
+
+    // Set initial state
+    btn.addClass('active');
+    btn.attr('data-open', true);
+    btn.css({
+      'text-align': 'center',
+      width: '100%',
+      bottom: 0,
+      left: 0,
+      transform: 'translateX(' + offsetX + 'px)',
+      transition: 'none'
+    });
+    anchor.css({
+      transform: 'translateY(' + -offsetY + 'px)',
+      transition: 'none'
+    });
+    backdrop.css({
+      'background-color': fabColor
+    });
+
+
+    setTimeout(function() {
+      btn.css({
+        transform: '',
+        transition: 'transform .2s cubic-bezier(0.550, 0.085, 0.680, 0.530), background-color 0s linear .2s'
+      });
+      anchor.css({
+        overflow: 'visible',
+        transform: '',
+        transition: 'transform .2s'
+      });
+
+      setTimeout(function() {
+        btn.css({
+          overflow: 'hidden',
+          'background-color': fabColor
+        });
+        backdrop.css({
+          transform: 'scale(' + scaleFactor + ')',
+          transition: 'transform .2s cubic-bezier(0.550, 0.055, 0.675, 0.190)'
+        });
+        menu.find('> li > a').css({
+          opacity: 1
+        });
+
+        // Scroll to close.
+        $(window).on('scroll.fabToolbarClose', function() {
+          toolbarToFAB(btn);
+          $(window).off('scroll.fabToolbarClose');
+          $(document).off('click.fabToolbarClose');
+        });
+
+        $(document).on('click.fabToolbarClose', function(e) {
+          if (!$(e.target).closest(menu).length) {
+            toolbarToFAB(btn);
+            $(window).off('scroll.fabToolbarClose');
+            $(document).off('click.fabToolbarClose');
+          }
+        });
+      }, 100);
+    }, 0);
+  };
+
+  /**
+   * Transform toolbar back into FAB
+   * @param  {Object}  object jQuery object
+   */
+  var toolbarToFAB = function(btn) {
+    if (btn.attr('data-open') !== "true") {
+      return;
+    }
+
+    var offsetX, offsetY, scaleFactor;
+    var windowWidth = window.innerWidth;
+    var windowHeight = window.innerHeight;
+    var btnWidth = btn.attr('data-origin-width');
+    var btnBottom = btn.attr('data-origin-bottom');
+    var btnLeft = btn.attr('data-origin-left');
+    var anchor = btn.find('> .btn-floating').first();
+    var menu = btn.find('> ul').first();
+    var backdrop = btn.find('.fab-backdrop');
+    var fabColor = anchor.css('background-color');
+
+    offsetX = btnLeft - (windowWidth / 2) + (btnWidth / 2);
+    offsetY = windowHeight - btnBottom;
+    scaleFactor = windowWidth / backdrop.width();
+
+
+    // Hide backdrop
+    btn.removeClass('active');
+    btn.attr('data-open', false);
+    btn.css({
+      'background-color': 'transparent',
+      transition: 'none'
+    });
+    anchor.css({
+      transition: 'none'
+    });
+    backdrop.css({
+      transform: 'scale(0)',
+      'background-color': fabColor
+    });
+    menu.find('> li > a').css({
+      opacity: ''
+    });
+
+    setTimeout(function() {
+      backdrop.remove();
+
+      // Set initial state.
+      btn.css({
+        'text-align': '',
+        width: '',
+        bottom: '',
+        left: '',
+        overflow: '',
+        'background-color': '',
+        transform: 'translate3d(' + -offsetX + 'px,0,0)'
+      });
+      anchor.css({
+        overflow: '',
+        transform: 'translate3d(0,' + offsetY + 'px,0)'
+      });
+
+      setTimeout(function() {
+        btn.css({
+          transform: 'translate3d(0,0,0)',
+          transition: 'transform .2s'
+        });
+        anchor.css({
+          transform: 'translate3d(0,0,0)',
+          transition: 'transform .2s cubic-bezier(0.550, 0.055, 0.675, 0.190)'
+        });
+      }, 20);
+    }, 200);
+  };
+
+
 }( jQuery ));
 (function ($) {
   // Image transition function
-  Materialize.fadeInImage =  function(selectorOrEl) {
+  Materialize.fadeInImage = function(selectorOrEl) {
     var element;
     if (typeof(selectorOrEl) === 'string') {
       element = $(selectorOrEl);
@@ -13382,30 +13907,30 @@ Materialize.toast = function (message, displayLength, className, completeCallbac
     }
     element.css({opacity: 0});
     $(element).velocity({opacity: 1}, {
-        duration: 650,
-        queue: false,
-        easing: 'easeOutSine'
-      });
+      duration: 650,
+      queue: false,
+      easing: 'easeOutSine'
+    });
     $(element).velocity({opacity: 1}, {
-          duration: 1300,
-          queue: false,
-          easing: 'swing',
-          step: function(now, fx) {
-              fx.start = 100;
-              var grayscale_setting = now/100;
-              var brightness_setting = 150 - (100 - now)/1.75;
+      duration: 1300,
+      queue: false,
+      easing: 'swing',
+      step: function(now, fx) {
+        fx.start = 100;
+        var grayscale_setting = now/100;
+        var brightness_setting = 150 - (100 - now)/1.75;
 
-              if (brightness_setting < 100) {
-                brightness_setting = 100;
-              }
-              if (now >= 0) {
-                $(this).css({
-                    "-webkit-filter": "grayscale("+grayscale_setting+")" + "brightness("+brightness_setting+"%)",
-                    "filter": "grayscale("+grayscale_setting+")" + "brightness("+brightness_setting+"%)"
-                });
-              }
-          }
-      });
+        if (brightness_setting < 100) {
+          brightness_setting = 100;
+        }
+        if (now >= 0) {
+          $(this).css({
+              "-webkit-filter": "grayscale("+grayscale_setting+")" + "brightness("+brightness_setting+"%)",
+              "filter": "grayscale("+grayscale_setting+")" + "brightness("+brightness_setting+"%)"
+          });
+        }
+      }
+    });
   };
 
   // Horizontal staggered list
@@ -13432,7 +13957,7 @@ Materialize.toast = function (message, displayLength, className, completeCallbac
   };
 
 
-  $(document).ready(function() {
+  $(document).on('turbolinks:load', function() {
     // Hardcoded .staggered-list scrollFire
     // var staggeredListOptions = [];
     // $('ul.staggered-list').each(function (i) {
@@ -13540,49 +14065,52 @@ Materialize.toast = function (message, displayLength, className, completeCallbac
 }( jQuery ));
 (function($) {
 
+  var scrollFireEventsHandled = false;
+
   // Input: Array of JSON objects {selector, offset, callback}
-
   Materialize.scrollFire = function(options) {
+    var onScroll = function() {
+      var windowScroll = window.pageYOffset + window.innerHeight;
 
-    var didScroll = false;
+      for (var i = 0 ; i < options.length; i++) {
+        // Get options from each line
+        var value = options[i];
+        var selector = value.selector,
+            offset = value.offset,
+            callback = value.callback;
 
-    window.addEventListener("scroll", function() {
-      didScroll = true;
-    });
+        var currentElement = document.querySelector(selector);
+        if ( currentElement !== null) {
+          var elementOffset = currentElement.getBoundingClientRect().top + window.pageYOffset;
 
-    // Rate limit to 100ms
-    setInterval(function() {
-      if(didScroll) {
-          didScroll = false;
-
-          var windowScroll = window.pageYOffset + window.innerHeight;
-
-          for (var i = 0 ; i < options.length; i++) {
-            // Get options from each line
-            var value = options[i];
-            var selector = value.selector,
-                offset = value.offset,
-                callback = value.callback;
-
-            var currentElement = document.querySelector(selector);
-            if ( currentElement !== null) {
-              var elementOffset = currentElement.getBoundingClientRect().top + window.pageYOffset;
-
-              if (windowScroll > (elementOffset + offset)) {
-                if (value.done !== true) {
-                  if (typeof(callback) === 'function') {
-                    callback.call(this, currentElement);
-                  } else if (typeof(callback) === 'string') {
-                    var callbackFunc = new Function(callback);
-                    callbackFunc(currentElement);
-                  }
-                  value.done = true;
-                }
+          if (windowScroll > (elementOffset + offset)) {
+            if (value.done !== true) {
+              if (typeof(callback) === 'function') {
+                callback.call(this, currentElement);
+              } else if (typeof(callback) === 'string') {
+                var callbackFunc = new Function(callback);
+                callbackFunc(currentElement);
               }
+              value.done = true;
             }
           }
+        }
       }
-    }, 100);
+    };
+
+
+    var throttledScroll = Materialize.throttle(function() {
+      onScroll();
+    }, options.throttle || 100);
+
+    if (!scrollFireEventsHandled) {
+      window.addEventListener("scroll", throttledScroll);
+      window.addEventListener("resize", throttledScroll);
+      scrollFireEventsHandled = true;
+    }
+
+    // perform a scan once, after current execution context, and after dom is ready
+    setTimeout(throttledScroll, 0);
   };
 
 })(jQuery);
@@ -16153,7 +16681,7 @@ Picker.extend( 'pickadate', DatePicker )
         return;
       }
 
-      var itHasLengthAttribute = $input.attr('length') !== undefined;
+      var itHasLengthAttribute = $input.attr('data-length') !== undefined;
 
       if(itHasLengthAttribute){
         $input.on('input', updateCounter);
@@ -16167,7 +16695,7 @@ Picker.extend( 'pickadate', DatePicker )
   };
 
   function updateCounter(){
-    var maxLength     = +$(this).attr('length'),
+    var maxLength     = +$(this).attr('data-length'),
     actualLength      = +$(this).val().length,
     isValidLength     = actualLength <= maxLength;
 
@@ -16208,7 +16736,7 @@ Picker.extend( 'pickadate', DatePicker )
     }
   }
 
-  $(document).ready(function(){
+  $(document).on('turbolinks:load', function(){
     $('input, textarea').characterCounter();
   });
 
@@ -16219,19 +16747,20 @@ Picker.extend( 'pickadate', DatePicker )
 
     init : function(options) {
       var defaults = {
-        time_constant: 200, // ms
+        duration: 200, // ms
         dist: -100, // zoom scale TODO: make this more intuitive as an option
         shift: 0, // spacing for center image
         padding: 0, // Padding between non center items
-        full_width: false, // Change to full width styles
+        fullWidth: false, // Change to full width styles
         indicators: false, // Toggle indicators
-        no_wrap: false // Don't wrap around and cycle through items.
+        noWrap: false, // Don't wrap around and cycle through items.
+        onCycleTo: null // Callback for when a new slide is cycled to.
       };
       options = $.extend(defaults, options);
 
       return this.each(function() {
 
-        var images, offset, center, pressed, dim, count,
+        var images, item_width, item_height, offset, center, pressed, dim, count,
             reference, referenceY, amplitude, target, velocity,
             xform, frame, timestamp, ticker, dragged, vertical_dragged;
         var $indicators = $('<ul class="indicators"></ul>');
@@ -16250,11 +16779,11 @@ Picker.extend( 'pickadate', DatePicker )
 
 
         // Options
-        if (options.full_width) {
+        if (options.fullWidth) {
           options.dist = 0;
           var firstImage = view.find('.carousel-item img').first();
           if (firstImage.length) {
-            imageHeight = firstImage.load(function(){
+            imageHeight = firstImage.on('load', function(){
               view.css('height', $(this).height());
             });
           } else {
@@ -16274,6 +16803,7 @@ Picker.extend( 'pickadate', DatePicker )
         offset = target = 0;
         images = [];
         item_width = view.find('.carousel-item').first().innerWidth();
+        item_height = view.find('.carousel-item').first().innerHeight();
         dim = item_width * 2 + options.padding;
 
         view.find('.carousel-item').each(function (i) {
@@ -16287,7 +16817,9 @@ Picker.extend( 'pickadate', DatePicker )
             }
 
             // Handle clicks on indicators.
-            $indicator.click(function () {
+            $indicator.click(function (e) {
+              e.stopPropagation();
+
               var index = $(this).index();
               cycleTo(index);
             });
@@ -16340,6 +16872,7 @@ Picker.extend( 'pickadate', DatePicker )
 
         function scroll(x) {
           var i, half, delta, dir, tween, el, alignment, xTranslation;
+          var lastCenter = center;
 
           offset = (typeof x === 'number') ? x : offset;
           center = Math.floor((offset + dim / 2) / dim);
@@ -16348,9 +16881,9 @@ Picker.extend( 'pickadate', DatePicker )
           tween = -dir * delta * 2 / dim;
           half = count >> 1;
 
-          if (!options.full_width) {
+          if (!options.fullWidth) {
             alignment = 'translateX(' + (view[0].clientWidth - item_width) / 2 + 'px) ';
-            alignment += 'translateY(' + (view[0].clientHeight - item_width) / 2 + 'px)';
+            alignment += 'translateY(' + (view[0].clientHeight - item_height) / 2 + 'px)';
           } else {
             alignment = 'translateX(0)';
           }
@@ -16367,14 +16900,20 @@ Picker.extend( 'pickadate', DatePicker )
 
           // center
           // Don't show wrapped items.
-          if (!options.no_wrap || (center >= 0 && center < count)) {
+          if (!options.noWrap || (center >= 0 && center < count)) {
             el = images[wrap(center)];
+
+            // Add active class to center item.
+            if (!$(el).hasClass('active')) {
+              view.find('.carousel-item').removeClass('active');
+              $(el).addClass('active');
+            }
             el.style[xform] = alignment +
               ' translateX(' + (-delta / 2) + 'px)' +
               ' translateX(' + (dir * options.shift * tween * i) + 'px)' +
               ' translateZ(' + (options.dist * tween) + 'px)';
             el.style.zIndex = 0;
-            if (options.full_width) { tweenedOpacity = 1; }
+            if (options.fullWidth) { tweenedOpacity = 1; }
             else { tweenedOpacity = 1 - 0.2 * tween; }
             el.style.opacity = tweenedOpacity;
             el.style.display = 'block';
@@ -16382,7 +16921,7 @@ Picker.extend( 'pickadate', DatePicker )
 
           for (i = 1; i <= half; ++i) {
             // right side
-            if (options.full_width) {
+            if (options.fullWidth) {
               zTranslation = options.dist;
               tweenedOpacity = (i === half && delta < 0) ? 1 - tween : 1;
             } else {
@@ -16390,7 +16929,7 @@ Picker.extend( 'pickadate', DatePicker )
               tweenedOpacity = 1 - 0.2 * (i * 2 + tween * dir);
             }
             // Don't show wrapped items.
-            if (!options.no_wrap || center + i < count) {
+            if (!options.noWrap || center + i < count) {
               el = images[wrap(center + i)];
               el.style[xform] = alignment +
                 ' translateX(' + (options.shift + (dim * i - delta) / 2) + 'px)' +
@@ -16402,7 +16941,7 @@ Picker.extend( 'pickadate', DatePicker )
 
 
             // left side
-            if (options.full_width) {
+            if (options.fullWidth) {
               zTranslation = options.dist;
               tweenedOpacity = (i === half && delta > 0) ? 1 - tween : 1;
             } else {
@@ -16410,7 +16949,7 @@ Picker.extend( 'pickadate', DatePicker )
               tweenedOpacity = 1 - 0.2 * (i * 2 - tween * dir);
             }
             // Don't show wrapped items.
-            if (!options.no_wrap || center - i >= 0) {
+            if (!options.noWrap || center - i >= 0) {
               el = images[wrap(center - i)];
               el.style[xform] = alignment +
                 ' translateX(' + (-options.shift + (-dim * i - delta) / 2) + 'px)' +
@@ -16423,17 +16962,24 @@ Picker.extend( 'pickadate', DatePicker )
 
           // center
           // Don't show wrapped items.
-          if (!options.no_wrap || (center >= 0 && center < count)) {
+          if (!options.noWrap || (center >= 0 && center < count)) {
             el = images[wrap(center)];
             el.style[xform] = alignment +
               ' translateX(' + (-delta / 2) + 'px)' +
               ' translateX(' + (dir * options.shift * tween) + 'px)' +
               ' translateZ(' + (options.dist * tween) + 'px)';
             el.style.zIndex = 0;
-            if (options.full_width) { tweenedOpacity = 1; }
+            if (options.fullWidth) { tweenedOpacity = 1; }
             else { tweenedOpacity = 1 - 0.2 * tween; }
             el.style.opacity = tweenedOpacity;
             el.style.display = 'block';
+          }
+
+          // onCycleTo callback
+          if (lastCenter !== center &&
+              typeof(options.onCycleTo) === "function") {
+            var $curr_item = view.find('.carousel-item').eq(wrap(center));
+            options.onCycleTo.call(this, $curr_item, dragged);
           }
         }
 
@@ -16455,7 +17001,7 @@ Picker.extend( 'pickadate', DatePicker )
 
           if (amplitude) {
             elapsed = Date.now() - timestamp;
-            delta = amplitude * Math.exp(-elapsed / options.time_constant);
+            delta = amplitude * Math.exp(-elapsed / options.duration);
             if (delta > 2 || delta < -2) {
                 scroll(target - delta);
                 requestAnimationFrame(autoScroll);
@@ -16472,7 +17018,7 @@ Picker.extend( 'pickadate', DatePicker )
             e.stopPropagation();
             return false;
 
-          } else if (!options.full_width) {
+          } else if (!options.fullWidth) {
             var clickedIndex = $(e.target).closest('.carousel-item').index();
             var diff = (center % count) - clickedIndex;
 
@@ -16489,7 +17035,7 @@ Picker.extend( 'pickadate', DatePicker )
           var diff = (center % count) - n;
 
           // Account for wraparound.
-          if (!options.no_wrap) {
+          if (!options.noWrap) {
             if (diff < 0) {
               if (Math.abs(diff + count) < Math.abs(diff)) { diff += count; }
 
@@ -16508,6 +17054,7 @@ Picker.extend( 'pickadate', DatePicker )
         }
 
         function tap(e) {
+          e.preventDefault();
           pressed = true;
           dragged = false;
           vertical_dragged = false;
@@ -16519,7 +17066,6 @@ Picker.extend( 'pickadate', DatePicker )
           timestamp = Date.now();
           clearInterval(ticker);
           ticker = setInterval(track, 100);
-
         }
 
         function drag(e) {
@@ -16573,7 +17119,7 @@ Picker.extend( 'pickadate', DatePicker )
           target = Math.round(target / dim) * dim;
 
           // No wrap of items.
-          if (options.no_wrap) {
+          if (options.noWrap) {
             if (target >= dim * (count - 1)) {
               target = dim * (count - 1);
             } else if (target < 0) {
@@ -16602,8 +17148,17 @@ Picker.extend( 'pickadate', DatePicker )
         });
 
 
-
-        window.onresize = scroll;
+        $(window).on('resize.carousel', function() {
+          if (options.fullWidth) {
+            item_width = view.find('.carousel-item').first().innerWidth();
+            item_height = view.find('.carousel-item').first().innerHeight();
+            dim = item_width * 2 + options.padding;
+            offset = center * 2 * item_width;
+            target = offset;
+          } else {
+            scroll();
+          }
+        });
 
         setupEvents();
         scroll(offset);
@@ -16612,7 +17167,7 @@ Picker.extend( 'pickadate', DatePicker )
           if (n === undefined) {
             n = 1;
           }
-          target = offset + dim * n;
+          target = (dim * Math.round(offset / dim)) + (dim * n);
           if (offset !== target) {
             amplitude = target - offset;
             timestamp = Date.now();
@@ -16624,7 +17179,7 @@ Picker.extend( 'pickadate', DatePicker )
           if (n === undefined) {
             n = 1;
           }
-          target = offset - dim * n;
+          target = (dim * Math.round(offset / dim)) - (dim * n);
           if (offset !== target) {
             amplitude = target - offset;
             timestamp = Date.now();
