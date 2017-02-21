@@ -1,20 +1,26 @@
 %div
   %div.navbar-fixed
-    %nav#nav
-      %div.nav-wrapper.valign-wrapper
-        %a.brand-logo.center{href: "/index.html"}
-          %img{src: '/images/lovebettie_logo.png', alt: 'Lovebettie', height: '64px', class: 'valign'}
+    %nav#nav.nav
+      %div.nav-wrapper
 
-        %a.button-collapse{"data-activates" => "mobile-nav", :href => "#"}
-          %i.material-icons menu
-
-        %ul.right.hide-on-med-and-down
+        %ul.left.hide-on-med-and-down
           %li
             %a.waves-effect.waves-highlight{href: "/index.html"} Home
           %li
             %a.waves-effect.waves-highlight{href: "/index.html"} Calendar
           %li  
             %a.waves-effect.waves-highlight{href: "#modal1"} Contact
+
+        %a.brand-logo.center{href: "/index.html"}
+          %img{src: '/images/lovebettie_logo.png', alt: 'Lovebettie', height: '64px', class: 'valign'}
+
+        %ul.right.hide-on-med-and-down.valign-wrapper
+          %li
+            = link_to image_tag('/images/f-header.svg', height: '40px', class: 'valign'), 'https://www.facebook.com/lovebettie/', target: '_blank'
+          %li
+            = link_to image_tag('/images/twitter.svg', height: '40px', class: 'valign'), 'https://twitter.com/Lovebettie', target: '_blank'
+          %li
+            = link_to image_tag('/images/instagram.svg', height: '40px', class: 'valign'), 'https://www.instagram.com/lovebettie/', target: '_blank'
           
         %ul#mobile-nav.side-nav
           %li
@@ -23,6 +29,9 @@
             %a.waves-effect.waves-highlight{href: "/index.html"} Calendar
           %li  
             %a.waves-effect.waves-highlight{href: "#modal1"} Contact
+
+        %a.button-collapse{"data-activates" => "mobile-nav", :href => "#"}
+          %i.material-icons menu
 
 %div#contact
   <!-- Modal Structure -->

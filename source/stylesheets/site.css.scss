@@ -26,6 +26,14 @@ body {
   z-index: 1;
 }
 
+.social-bar {
+  margin: auto auto;
+  padding-bottom: 1em;
+  .social-images img {
+    padding: 0em 1em 0em 1em;
+  }
+}
+
 .contact {
   margin: 0 auto;
   background-color: $color;
