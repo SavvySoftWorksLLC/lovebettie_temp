@@ -13,9 +13,22 @@ body {
 #nav {
   background-color: #AA0000; }
 
+.nav-social {
+  padding-top: 0.75em; }
+
+@media (max-width: 320px) {
+  a.brand-logo img {
+    height: 48px; } }
+
 #sidenav-overlay {
   background-color: rgba(255, 255, 255, 0.25);
   z-index: 1; }
+
+.social-bar {
+  margin: auto auto;
+  padding-bottom: 1em; }
+  .social-bar .social-images img {
+    padding: 0em 1em 0em 1em; }
 
 .contact {
   margin: 0 auto;
