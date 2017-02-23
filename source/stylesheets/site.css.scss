@@ -21,6 +21,18 @@ body {
   background-color: $color;
 }
 
+.nav-social {
+  padding-top: 0.75em;
+}
+
+a.brand-logo {
+  img{
+    @media (max-width: 320px) {
+      height: 48px;
+    }
+  }
+}
+
 #sidenav-overlay {
   background-color: rgba(255, 255, 255, .25);
   z-index: 1;
