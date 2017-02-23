@@ -30,6 +30,9 @@ body {
   .social-bar .social-images img {
     padding: 0em 1em 0em 1em; }
 
+#modal1 {
+  background-color: #AA0000; }
+
 .contact {
   margin: 0 auto;
   background-color: #AA0000;
