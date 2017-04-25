@@ -2,9 +2,9 @@
 # yarn lockfile v1
 
 
-fullcalendar@^3.3.1:
+"fullcalendar@git+ssh://git@github.com/fullcalendar/fullcalendar.git#v3.3.1":
   version "3.3.1"
-  resolved "https://registry.yarnpkg.com/fullcalendar/-/fullcalendar-3.3.1.tgz#e8d458d64b7dcb5ba70ce890dda2488b8911539a"
+  resolved "git+ssh://git@github.com/fullcalendar/fullcalendar.git#9a4b69acae82bba40dafb0623c66f11368b21393"
   dependencies:
     jquery "2 - 3"
     moment "^2.9.0"
