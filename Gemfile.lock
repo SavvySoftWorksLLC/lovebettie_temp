@@ -139,6 +139,7 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
+  dotenv (~> 2.1, >= 2.1.1)
   materialize-sass
   middleman (>= 4.0.0)
   middleman-compass (>= 4.0.0)
@@ -151,4 +152,4 @@ DEPENDENCIES
   wdm (~> 0.1.0)
 
 BUNDLED WITH
-   1.13.7
+   1.14.6
