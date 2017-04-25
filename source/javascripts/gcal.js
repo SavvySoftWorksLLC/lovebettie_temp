@@ -3,10 +3,12 @@
 //= require fullcalendar/dist/gcal.min
 
 $(document).ready(function() {
+    var apiKey = jQuery('#calendar').data('apiKey');
+    var calendarId = jQuery('#calendar').data('calendarId');
     $('#calendar').fullCalendar({
-        googleCalendarApiKey: ENV['GOOGLE_CAL_API_KEY'],
+        googleCalendarApiKey: apiKey,
         events: {
-            googleCalendarId: ENV['GOOGLE_CAL_ID']
+            googleCalendarId: calendarId
         }
     });
 });
