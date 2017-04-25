@@ -1,4 +1,4 @@
-require 'dotenv/load'
+activate :dotenv
 
 activate :sprockets do |c|
   c.expose_middleman_helpers = true
