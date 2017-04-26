@@ -1,0 +1,50 @@
+%div.footer
+  %div.navbar
+    %nav#nav.nav
+      %div.nav-wrapper
+
+        %a.brand-logo.center{href: "/index.html", style: "height:64px;"}
+          %img{src: '/images/lovebettie_logo.png', alt: 'Lovebettie', height: '64px'}
+
+        %ul.right.hide-on-med-and-down
+          %li
+            = link_to image_tag('/images/f-header.svg', height: '40px'), 'https://www.facebook.com/lovebettie/', target: '_blank', class: 'nav-social'
+          %li
+            = link_to image_tag('/images/twitter.svg', height: '40px'), 'https://twitter.com/Lovebettie', target: '_blank', class: 'nav-social'
+          %li
+            = link_to image_tag('/images/instagram.svg', height: '40px'), 'https://www.instagram.com/lovebettie/', target: '_blank', class: 'nav-social'
+          
+        %ul#mobile-nav.side-nav
+          %li
+            %a.waves-effect.waves-highlight{href: "/index.html"} Home
+          / %li  
+          /   %a.waves-effect.waves-highlight{href: "/index.html"} Calendar
+          %li  
+            %a.waves-effect.waves-highlight{href: "#modal1"} Contact
+
+        %a.button-collapse{"data-activates" => "mobile-nav", :href => "#"}
+          %i.material-icons menu
+
+%div#contact
+  <!-- Modal Structure -->
+  %div#modal1.modal
+    %div.contact
+      %div.modal-content
+        %h5
+          %img{src: '/images/lovebettie_logo.png', alt: 'Lovebettie', height: '64px', style: 'padding-top: 4px;'}
+        %h5 Contact US
+      %div.row
+        %form.serializableForm.col.s12{:action => "https://remailer.savvysoftworks.com", :method => "post"}
+          %input{:name => "public_token", :type => "hidden", :value => "952fe61ad635a0cfd09a1822d077dedf019538cba65959074d08f1dddd47c908"}/
+          %input{:name => "after_success", :type => "hidden", :value => "http://lovebettie.com/index.html"}/
+          %input{:name => "after_failure", :type => "hidden", :value => "http://lovebettie.com/index.html"}/
+          .input-field
+            %input#name.validate{:name => "name", :placeholder => "Name", :type => "text"}/
+          .input-field
+            %input#email.validate{:name => "email", :placeholder => "Email", :type => "email"}/
+          .input-field
+            %textarea#textarea1.materialize-textarea{:length => "240", :name => "textarea", :placeholder => "Book us, ask a question, or just say hello..."}
+          .modal-footer
+            %button#submit.btn.waves-effect.waves-light.submit{:type => "submit"}
+              Submit
+              %i.material-icons.right send

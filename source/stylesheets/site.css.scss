@@ -73,3 +73,12 @@ a.brand-logo {
   background-color: $lighttext;
   color: $black;
 }
+
+.fc-unthemed td.fc-today {
+  background-color: $color;
+  color: $lighttext;
+}
+
+.fc-row .fc-content-skeleton td, .fc-row .fc-helper-skeleton td {
+  border-color: $lighttext;
+}
