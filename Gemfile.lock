@@ -90,6 +90,9 @@ GEM
       servolux
       tilt (~> 1.4.1)
       uglifier (~> 3.0)
+    middleman-dotenv (2.0.0)
+      dotenv (>= 2.0)
+      middleman-core (>= 4.0)
     middleman-gh-pages (0.3.1)
       rake (> 0.9.3)
     middleman-jquery (2.1.1)
@@ -142,6 +145,7 @@ DEPENDENCIES
   materialize-sass
   middleman (>= 4.0.0)
   middleman-compass (>= 4.0.0)
+  middleman-dotenv (~> 2.0)
   middleman-gh-pages
   middleman-jquery
   middleman-livereload
@@ -151,4 +155,4 @@ DEPENDENCIES
   wdm (~> 0.1.0)
 
 BUNDLED WITH
-   1.13.7
+   1.14.6

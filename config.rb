@@ -1,3 +1,5 @@
+activate :dotenv
+
 activate :sprockets do |c|
   c.expose_middleman_helpers = true
 endpose_middleman_helpers = true

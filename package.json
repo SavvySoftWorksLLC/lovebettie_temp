@@ -1,0 +1,23 @@
+{
+  "name": "lovebettie_temp",
+  "version": "1.0.0",
+  "description": "### Lovebettie's Temporary Landing Page",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SavvySoftWorksLLC/lovebettie_temp.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/SavvySoftWorksLLC/lovebettie_temp/issues"
+  },
+  "homepage": "https://github.com/SavvySoftWorksLLC/lovebettie_temp#readme",
+  "dependencies": {
+    "fullcalendar": "git+ssh://git@github.com/fullcalendar/fullcalendar.git#v3.3.1",
+    "moment": "^2.18.1"
+  }
+}
