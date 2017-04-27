@@ -100,13 +100,80 @@
     <div class='header-image'>
   <img src='images/lb.jpg'>
 </div>
-<!-- %div.cal -->
-<!-- <iframe src="https://calendar.google.com/calendar/embed?height=600&amp;wkst=1&amp;bgcolor=%23FFFFFF&amp;src=paul.scarrone%40gmail.com&amp;color=%231B887A&amp;ctz=America%2FNew_York" style="border-width:0" width="100%" height="600" frameborder="0" scrolling="no"></iframe> -->
-<div class='social-bar'>
-  <div class='row center social-images'>
-    <a href="https://www.facebook.com/lovebettie/" target="_blank"><img src="images/f.svg" height="64px" alt="F" /></a>
-    <a href="https://twitter.com/Lovebettie" target="_blank"><img src="images/twitter.svg" height="64px" alt="Twitter" /></a>
-    <a href="https://www.instagram.com/lovebettie/" target="_blank"><img src="images/instagram.svg" height="64px" alt="Instagram" /></a>
+<div class='cal container'>
+  <div class='row'>
+    <div class='col s12' data-apiKey='AIzaSyA-jQx5jtTtqeyqWUFlLc1F2TgMS0wGeJI' data-calendarId='paul.scarrone@gmail.com' id='calendar'></div>
+  </div>
+</div>
+
+    <div class='footer'>
+  <div class='navbar'>
+    <nav class='nav' id='nav'>
+      <div class='nav-wrapper'>
+        <a class='brand-logo center' href='/index.html' style='height:64px;'>
+          <img alt='Lovebettie' height='64px' src='images/lovebettie_logo.png'>
+        </a>
+        <ul class='right hide-on-med-and-down'>
+          <li>
+            <a href="https://www.facebook.com/lovebettie/" target="_blank" class="nav-social"><img src="images/f-header.svg" height="40px" alt="F header" /></a>
+          </li>
+          <li>
+            <a href="https://twitter.com/Lovebettie" target="_blank" class="nav-social"><img src="images/twitter.svg" height="40px" alt="Twitter" /></a>
+          </li>
+          <li>
+            <a href="https://www.instagram.com/lovebettie/" target="_blank" class="nav-social"><img src="images/instagram.svg" height="40px" alt="Instagram" /></a>
+          </li>
+        </ul>
+        <ul class='side-nav' id='mobile-nav'>
+          <li>
+            <a class='waves-effect waves-highlight' href='/index.html'>Home</a>
+          </li>
+          <!-- %li -->
+          <!-- %a.waves-effect.waves-highlight{href: "/index.html"} Calendar -->
+          <li>
+            <a class='waves-effect waves-highlight' href='#modal1'>Contact</a>
+          </li>
+        </ul>
+        <a class='button-collapse' data-activates='mobile-nav' href='#'>
+          <i class='material-icons'>menu</i>
+        </a>
+      </div>
+    </nav>
+  </div>
+</div>
+<div id='contact'>
+  <!-- Modal Structure -->
+  <div class='modal' id='modal1'>
+    <div class='contact'>
+      <div class='modal-content'>
+        <h5>
+          <img alt='Lovebettie' height='64px' src='images/lovebettie_logo.png' style='padding-top: 4px;'>
+        </h5>
+        <h5>Contact US</h5>
+      </div>
+      <div class='row'>
+        <form action='https://remailer.savvysoftworks.com' class='serializableForm col s12' method='post'>
+          <input name='public_token' type='hidden' value='952fe61ad635a0cfd09a1822d077dedf019538cba65959074d08f1dddd47c908'>
+          <input name='after_success' type='hidden' value='http://lovebettie.com/index.html'>
+          <input name='after_failure' type='hidden' value='http://lovebettie.com/index.html'>
+          <div class='input-field'>
+            <input class='validate' id='name' name='name' placeholder='Name' type='text'>
+          </div>
+          <div class='input-field'>
+            <input class='validate' id='email' name='email' placeholder='Email' type='email'>
+          </div>
+          <div class='input-field'>
+            <textarea class='materialize-textarea' id='textarea1' length='240' name='textarea' placeholder='Book us, ask a question, or just say hello...'></textarea>
+          </div>
+          <div class='modal-footer'>
+            <button class='btn waves-effect waves-light submit' id='submit' type='submit'>
+              Submit
+              <i class='material-icons right'>send</i>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   </div>
 </div>
 

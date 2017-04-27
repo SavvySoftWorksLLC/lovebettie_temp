@@ -52,3 +52,10 @@ body {
 #submit:hover {
   background-color: #FFFFFF;
   color: #000000; }
+
+.fc-unthemed td.fc-today {
+  background-color: #AA0000;
+  color: #FFFFFF; }
+
+.fc-row .fc-content-skeleton td, .fc-row .fc-helper-skeleton td {
+  border-color: #FFFFFF; }
