@@ -57,6 +57,13 @@ a.brand-logo {
   text-align: center;
 }
 
+.modal {
+  background-color: $black;
+  .modal-footer a{
+    color: $lighttext;
+  }
+}
+
 .modal .modal-footer{
   background-color: $color;
   color: $lighttext;
@@ -81,4 +88,8 @@ a.brand-logo {
 
 .fc-row .fc-content-skeleton td, .fc-row .fc-helper-skeleton td {
   border-color: $lighttext;
+}
+
+.fc-day-grid-event .fc-content {
+  white-space: normal;
 }
