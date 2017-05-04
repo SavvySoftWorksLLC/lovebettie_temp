@@ -81,9 +81,35 @@ a.brand-logo {
   color: $black;
 }
 
-.fc-unthemed td.fc-today {
-  background-color: $color;
+.fc-view, .fc-basic-view {
+  background-color: $lighttext;
+  color: $color;
+  border: 1px solid $color;
+}
+
+.fc-day-header {
+  background-color: $lighttext;
+  border: 1px solid $color !important;
+  border-bottom-color: $black !important;
+}
+
+td.fc-day-top {
+  background-color: $color !important;
   color: $lighttext;
+}
+
+td.fc-day {
+  border: 1px solid $color;
+}
+
+.fc-unthemed td.fc-today {
+  border-color: $black; 
+  color: $lighttext;
+  border: 4px outset $black !important;
+}
+
+.fc-day-top.fc-today {
+  border: 4px outset $black !important;
 }
 
 .fc-row .fc-content-skeleton td, .fc-row .fc-helper-skeleton td {
