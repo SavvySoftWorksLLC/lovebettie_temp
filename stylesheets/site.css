@@ -39,6 +39,11 @@ body {
   color: #FFFFFF;
   text-align: center; }
 
+.modal {
+  background-color: #000000; }
+  .modal .modal-footer a {
+    color: #FFFFFF; }
+
 .modal .modal-footer {
   background-color: #AA0000;
   color: #FFFFFF; }
@@ -53,9 +58,37 @@ body {
   background-color: #FFFFFF;
   color: #000000; }
 
-.fc-unthemed td.fc-today {
-  background-color: #AA0000;
+.fc-view, .fc-basic-view {
+  background-color: #FFFFFF;
+  color: #AA0000;
+  border: 1px solid #000000;
+  box-shadow: 2px 2px 2px #FFFFFF; }
+
+.fc-day-header {
+  background-color: #FFFFFF;
+  color: #000000;
+  border: 1px solid #e6e6e6 !important; }
+
+td.fc-day-top {
+  background-color: #000000 !important;
   color: #FFFFFF; }
 
+td.fc-day {
+  border: 1px solid #e6e6e6; }
+
+.fc-unthemed td.fc-today {
+  color: #FFFFFF; }
+
+.fc-day.fc-widget-content.fc-today.fc-state-highlight {
+  background-color: #E3EBF4; }
+
 .fc-row .fc-content-skeleton td, .fc-row .fc-helper-skeleton td {
-  border-color: #FFFFFF; }
+  border-color: #e6e6e6; }
+
+.fc-day-grid-event .fc-content {
+  white-space: normal; }
+
+.fc-event {
+  background-color: #AA0000;
+  border-color: #AA0000;
+  color: #FFFFFF; }
