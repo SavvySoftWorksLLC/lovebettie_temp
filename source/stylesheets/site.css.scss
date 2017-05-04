@@ -2,6 +2,9 @@ $black: #000000;
 $lighttext: #FFFFFF;
 $color: #AA0000;
 
+$calendar-highlight: #E3EBF4;
+$calendar-inside-borders: darken($lighttext, 10);
+
 .container {
   margin: 0 auto;
   width: 80%;
@@ -91,8 +94,7 @@ a.brand-logo {
 .fc-day-header {
   background-color: $lighttext;
   color: $black;
-  border: 1px solid $black !important;
-  border-bottom-color: $black !important;
+  border: 1px solid $calendar-inside-borders !important;
 }
 
 td.fc-day-top {
@@ -101,25 +103,27 @@ td.fc-day-top {
 }
 
 td.fc-day {
-  border: 1px solid $black;
+  border: 1px solid $calendar-inside-borders;
 }
 
 .fc-unthemed td.fc-today { 
   color: $lighttext;
 }
 
-.fc-day-top.fc-today {
-
-}
-
 .fc-day.fc-widget-content.fc-today.fc-state-highlight {
-  background-color: #E3EBF4;
+  background-color: $calendar-highlight;
 }
 
 .fc-row .fc-content-skeleton td, .fc-row .fc-helper-skeleton td {
-  border-color: $lighttext;
+  border-color: $calendar-inside-borders;
 }
 
 .fc-day-grid-event .fc-content {
   white-space: normal;
+}
+
+.fc-event {
+    background-color: $color;
+    border-color: $color;
+    color: $lighttext;
 }
