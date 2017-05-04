@@ -26,7 +26,6 @@ $(document).ready(function() {
           googleCalendarId: calendarId
         },
         eventRender: function (event, element) {
-          element.find(".fc-content").prepend("<i class='mdi mdi-information-outline'></i>")
           var modalId = `modal-${event.id}`;
           var modalContext = {
             id: modalId,
